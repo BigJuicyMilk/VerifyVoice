@@ -1,0 +1,11 @@
+{
+  "name": "Verify Voice",
+  "description": "An AI-powered product safety and voice recognition assistant designed for clarity and accessibility.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
