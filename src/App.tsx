@@ -473,65 +473,63 @@ const QuestionView = ({
         <div className="text-center">
           <h2 className="text-5xl font-black leading-tight text-on-surface mb-4">Ask About Your Product</h2>
           <p className="text-xl font-medium text-on-surface-variant max-w-2xl mx-auto">
-            We have captured your product label. Type your question right on the image.
+            We have captured your product label. What would you like to know about it?
           </p>
         </div>
 
-        {/* Scanned Image Preview with overlaid question input */}
-        <div className="relative w-full aspect-[4/3] rounded-3xl overflow-hidden shadow-2xl bg-surface-container-highest group">
+        {/* Scanned Image Preview */}
+        <div className="relative w-full aspect-[4/3] rounded-3xl overflow-hidden shadow-2xl bg-surface-container-highest">
           <img src={imagePath} alt="Scanned product" className="w-full h-full object-cover" />
-
-          {/* Top badge */}
-          <div className="absolute top-4 left-4 bg-primary text-white px-4 py-1.5 rounded-full text-sm font-black uppercase tracking-wider z-10">
+          <div className="absolute top-4 left-4 bg-primary text-white px-4 py-1.5 rounded-full text-sm font-black uppercase tracking-wider">
             Scanned Label
           </div>
-
-          {/* Bottom overlay with input */}
-          <form onSubmit={handleSubmit} className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent p-6 pt-16 z-10">
-            <div className="relative flex items-center gap-3">
-              <input
-                type="text"
-                value={question}
-                onChange={(e) => setQuestion(e.target.value)}
-                placeholder="Type your question here..."
-                className="flex-1 h-14 bg-white/90 backdrop-blur-md rounded-full px-6 text-lg font-bold text-on-surface placeholder:text-on-surface-variant/60 border-none focus:ring-4 focus:ring-primary/30 transition-all shadow-xl"
-                disabled={isAnalyzing}
-              />
-              <button
-                type="submit"
-                disabled={!question.trim() || isAnalyzing}
-                className={cn(
-                  'h-14 px-6 rounded-full bg-primary text-white font-bold text-lg flex items-center gap-2 transition-all active:scale-95 shadow-xl whitespace-nowrap',
-                  (!question.trim() || isAnalyzing) && 'opacity-50 cursor-not-allowed'
-                )}
-              >
-                {isAnalyzing ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                ) : (
-                  <>
-                    <Sparkles className="w-5 h-5" />
-                    Analyze
-                  </>
-                )}
-              </button>
-            </div>
-
-            {/* Quick suggestion chips */}
-            <div className="flex flex-wrap gap-2 mt-4 justify-center">
-              {['Does it contain Vitamin C?', 'Is it good for diabetics?', 'Any allergens?', 'Is it vegan?'].map((q) => (
-                <button
-                  key={q}
-                  type="button"
-                  onClick={() => setQuestion(q)}
-                  disabled={isAnalyzing}
-                  className="px-4 py-2 bg-white/20 backdrop-blur-md rounded-full text-sm font-bold text-white hover:bg-white/40 transition-colors disabled:opacity-50 border border-white/20"
-                >
-                  {q}
-                </button>
-              ))}
-            </div>
-          </form>
         </div>
+
+        {/* Question Input — at the bottom of the page */}
+        <form onSubmit={handleSubmit} className="w-full space-y-4">
+          <div className="flex items-center gap-3">
+            <input
+              type="text"
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
+              placeholder="e.g. Does this product have Vitamin C?"
+              className="flex-1 h-16 bg-white rounded-2xl px-6 text-xl font-bold text-on-surface placeholder:text-on-surface-variant/40 border-none focus:ring-4 focus:ring-primary/20 transition-all shadow-sm"
+              disabled={isAnalyzing}
+            />
+            <button
+              type="submit"
+              disabled={!question.trim() || isAnalyzing}
+              className={cn(
+                'h-16 px-8 rounded-2xl bg-primary text-white font-bold text-xl flex items-center gap-2 transition-all active:scale-95 shadow-lg whitespace-nowrap',
+                (!question.trim() || isAnalyzing) && 'opacity-50 cursor-not-allowed'
+              )}
+            >
+              {isAnalyzing ? (
+                <Loader2 className="w-6 h-6 animate-spin" />
+              ) : (
+                <>
+                  <Sparkles className="w-6 h-6" />
+                  Analyze
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* Quick suggestion chips */}
+          <div className="flex flex-wrap gap-2">
+            {['Does it contain Vitamin C?', 'Is it good for diabetics?', 'Any allergens?', 'Is it vegan?'].map((q) => (
+              <button
+                key={q}
+                type="button"
+                onClick={() => setQuestion(q)}
+                disabled={isAnalyzing}
+                className="px-4 py-2 bg-surface-container-low rounded-full text-sm font-bold text-primary hover:bg-primary/10 transition-colors disabled:opacity-50"
+              >
+                {q}
+              </button>
+            ))}
+          </div>
+        </form>
       </motion.div>
     </div>
   );
