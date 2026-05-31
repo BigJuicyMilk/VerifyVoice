@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   AudioLines, 
@@ -13,22 +13,34 @@ import {
   Mic, 
   History as HistoryIcon, 
   GraduationCap, 
-  ScrollText, 
   Search, 
   QrCode, 
-  Info, 
-  ArrowRight,
   ShieldCheck,
   Zap,
   Play,
   Pause,
-  AlertCircle,
-  LucideIcon
+  LucideIcon,
+  Upload,
+  X,
+  FlipHorizontal,
+  Sparkles,
+  MessageCircle,
+  ArrowRight,
+  Loader2
 } from 'lucide-react';
 import { cn } from './lib/utils';
+import { useAuth } from './context/AuthContext';
+import AuthScreen from './components/AuthScreen';
+import ProfileScreen from './components/ProfileScreen';
 
 // --- Types ---
-type Screen = 'check' | 'results' | 'history' | 'talk' | 'learn';
+type Screen = 'check' | 'question' | 'results' | 'history' | 'talk' | 'learn' | 'profile';
+
+interface AnalysisResult {
+  extractedText: string;
+  deepseekResult: string;
+  savedPath: string;
+}
 
 interface NavItemProps {
   icon: LucideIcon;
@@ -54,204 +66,598 @@ const NavItem = ({ icon: Icon, label, active, onClick }: NavItemProps) => (
   </button>
 );
 
-const Header = ({ audioOn, setAudioOn }: { audioOn: boolean; setAudioOn: (v: boolean) => void }) => (
-  <header className="fixed top-0 left-0 w-full z-50 flex items-center justify-between px-6 py-4 h-20 bg-[#f9f9ff]/80 backdrop-blur-md">
-    <div className="flex items-center gap-3">
-      <div className="text-primary">
-        <AudioLines className="w-8 h-8" />
+const Header = ({ 
+  audioOn, 
+  setAudioOn, 
+  user, 
+  onProfileClick 
+}: { 
+  audioOn: boolean; 
+  setAudioOn: (v: boolean) => void;
+  user: { name: string } | null;
+  onProfileClick: () => void;
+}) => {
+  const initials = user?.name
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+
+  return (
+    <header className="fixed top-0 left-0 w-full z-50 flex items-center justify-between px-6 py-4 h-20 bg-[#f9f9ff]/80 backdrop-blur-md">
+      <div className="flex items-center gap-3">
+        <div className="text-primary">
+          <AudioLines className="w-8 h-8" />
+        </div>
+        <h1 className="font-bold text-2xl tracking-tighter text-primary">Verify Voice</h1>
       </div>
-      <h1 className="font-bold text-2xl tracking-tighter text-primary">Verify Voice</h1>
-    </div>
-    <button 
-      onClick={() => setAudioOn(!audioOn)}
-      className={cn(
-        "flex items-center gap-2 px-6 py-3 rounded-full text-white font-bold transition-all active:scale-95 shadow-lg",
-        audioOn ? "bg-primary" : "bg-secondary-container"
-      )}
-    >
-      {audioOn ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
-      <span className="tracking-widest text-sm uppercase">Audio {audioOn ? 'On' : 'Off'}</span>
-    </button>
-  </header>
-);
+      <div className="flex items-center gap-3">
+        <button 
+          onClick={() => setAudioOn(!audioOn)}
+          className={cn(
+            "flex items-center gap-2 px-6 py-3 rounded-full text-white font-bold transition-all active:scale-95 shadow-lg",
+            audioOn ? "bg-primary" : "bg-secondary-container"
+          )}
+        >
+          {audioOn ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+          <span className="tracking-widest text-sm uppercase hidden sm:inline">Audio {audioOn ? 'On' : 'Off'}</span>
+        </button>
+        {user && (
+          <button
+            onClick={onProfileClick}
+            className="w-11 h-11 bg-primary rounded-full flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-primary/20 active:scale-95 transition-transform"
+          >
+            {initials}
+          </button>
+        )}
+      </div>
+    </header>
+  );
+};
 
 // --- Screen Views ---
 
-const ScannerView = ({ onScan }: { onScan: () => void }) => (
-  <div className="flex flex-col items-center pt-8 pb-32 px-6 max-w-4xl mx-auto w-full">
-    <div className="text-center mb-10">
-      <h2 className="text-5xl font-black leading-tight text-on-surface mb-4">Check a Product</h2>
-      <p className="text-xl font-medium text-on-surface-variant max-w-2xl mx-auto">
-        Point your camera at a product or its label to see if it is a good choice for you.
-      </p>
-    </div>
+const ScannerView = ({ onScan }: { onScan: (imagePath: string) => void }) => {
+  const { user } = useAuth();
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [isScanning, setIsScanning] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState('');
+  const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
 
-    <div className="relative w-full aspect-[4/5] rounded-3xl overflow-hidden shadow-2xl bg-surface-container-highest group">
-      <img 
-        src="https://lh3.googleusercontent.com/aida-public/AB6AXuBwhSpG4NvYRhIk4eBtMwVuL6a4QW3c6sUnd5U0ymM9ozkMeMmj33aqASyNWfnsQHiwK_arXrfmaj-hRoWlbVq3la1QogCalHxt3wxWvI2x_3m2jq6m9NbaDAIAHywuuT8sxkny_bs10LBTy0YIfxFHkW4Yb2Bbzj97qtygtWqfEtqq-N8PvWERzZi0ZNs3d8YN1Lj0E80bnU9o2ffJNu5HX5UgrUh8O3LvTS3Dm57bHlTdDqJEJphb-N0u2Eal_hIawuI42ywzEz-t" 
-        alt="Scanner View" 
-        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-      />
-      
-      {/* Viewfinder Overlay */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center p-8 bg-black/20">
-        <div className="relative w-72 h-72 border-4 border-white/40 rounded-3xl">
-          <div className="absolute -top-1 -left-1 w-10 h-10 border-t-8 border-l-8 border-yellow-400 rounded-tl-xl" />
-          <div className="absolute -top-1 -right-1 w-10 h-10 border-t-8 border-r-8 border-yellow-400 rounded-tr-xl" />
-          <div className="absolute -bottom-1 -left-1 w-10 h-10 border-b-8 border-l-8 border-yellow-400 rounded-bl-xl" />
-          <div className="absolute -bottom-1 -right-1 w-10 h-10 border-b-8 border-r-8 border-yellow-400 rounded-br-xl" />
-          
-          {/* Scan Line Animation */}
-          <motion.div 
-            animate={{ top: ['0%', '100%', '0%'] }}
-            transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-            className="absolute left-0 right-0 h-1 bg-yellow-400 shadow-[0_0_15px_#facc15] z-10"
-          />
-        </div>
-        
-        <div className="mt-12 bg-black/60 backdrop-blur-md px-8 py-3 rounded-full border border-white/20">
-          <p className="text-white font-bold text-lg">Align label within the frame</p>
-        </div>
+  const startCamera = useCallback(async () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: facingMode } },
+        audio: false,
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+      setCameraError(null);
+    } catch (err: any) {
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        setCameraError('Camera permission denied. Please allow camera access and refresh.');
+      } else if (err.name === 'NotFoundError' || err.name === 'OverconstrainedError') {
+        setCameraError('This camera is not available on this device.');
+      } else {
+        setCameraError('Could not access camera: ' + err.message);
+      }
+    }
+  }, [facingMode]);
+
+  useEffect(() => {
+    let cancelled = false;
+    startCamera().then(() => {
+      if (cancelled && streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+      }
+    });
+    return () => {
+      cancelled = true;
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+      }
+    };
+  }, [startCamera]);
+
+  const flipCamera = () => {
+    setFacingMode((prev) => (prev === 'environment' ? 'user' : 'environment'));
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadError('');
+    setSelectedFile(file);
+    setPreviewUrl(URL.createObjectURL(file));
+  };
+
+  const clearSelection = () => {
+    setSelectedFile(null);
+    setPreviewUrl(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const readFileAsDataURL = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const captureVideoFrame = (): string | null => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas || video.videoWidth === 0) return null;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    if (facingMode === 'user') {
+      ctx.translate(canvas.width, 0);
+      ctx.scale(-1, 1);
+    }
+    ctx.drawImage(video, 0, 0);
+    return canvas.toDataURL('image/jpeg', 0.9);
+  };
+
+  const handleScan = async () => {
+    setIsScanning(true);
+    setUploadError('');
+
+    if (!user) {
+      setUploadError('You must be logged in to save scans.');
+      setIsScanning(false);
+      return;
+    }
+
+    const folderName = user.id;
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+
+    try {
+      if (selectedFile) {
+        // Upload the selected file
+        const dataUrl = await readFileAsDataURL(selectedFile);
+        const res = await fetch('/api/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: folderName,
+            filename: selectedFile.name,
+            data: dataUrl,
+          }),
+        });
+        if (!res.ok) throw new Error('Upload failed');
+      } else if (!cameraError && videoRef.current) {
+        // Capture the current camera frame and upload it
+        const frame = captureVideoFrame();
+        if (frame) {
+          const res = await fetch('/api/upload', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              username: folderName,
+              filename: `scan_${timestamp}.jpg`,
+              data: frame,
+            }),
+          });
+          if (!res.ok) throw new Error('Upload failed');
+        }
+      }
+    } catch (err: any) {
+      setUploadError(err.message || 'Failed to save image. Please try again.');
+      setIsScanning(false);
+      return;
+    }
+
+    setTimeout(() => {
+      setIsScanning(false);
+      const folderName = user ? user.id : 'anonymous';
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const path = selectedFile
+        ? `/uploads/${folderName}/${selectedFile.name}`
+        : `/uploads/${folderName}/scan_${timestamp}.jpg`;
+      onScan(path);
+    }, 1200);
+  };
+
+  return (
+    <div className="flex flex-col items-center pt-8 pb-32 px-6 max-w-4xl mx-auto w-full">
+      <div className="text-center mb-10">
+        <h2 className="text-5xl font-black leading-tight text-on-surface mb-4">Check a Product</h2>
+        <p className="text-xl font-medium text-on-surface-variant max-w-2xl mx-auto">
+          Point your camera at a product or its label to see if it is a good choice for you.
+        </p>
       </div>
 
-      <div className="absolute bottom-10 left-6 right-6 z-20">
-        <button 
-          onClick={onScan}
-          className="bg-gradient-to-br from-primary to-primary-container text-white w-full h-20 rounded-2xl shadow-2xl flex items-center justify-center gap-4 active:scale-95 transition-transform"
-        >
-          <QrCode className="w-8 h-8" />
-          <span className="text-2xl font-bold">Scan Now</span>
-        </button>
-      </div>
-    </div>
+      <div className="relative w-full aspect-[4/5] rounded-3xl overflow-hidden shadow-2xl bg-surface-container-highest group">
+        {/* Hidden canvas for capturing video frames */}
+        <canvas ref={canvasRef} className="hidden" />
 
-    <div className="mt-12 flex flex-col items-center gap-6 w-full">
-      <button className="flex items-center gap-4 bg-gradient-to-r from-primary to-secondary-container text-white px-10 py-5 rounded-full shadow-2xl hover:shadow-primary/30 active:scale-95 transition-all group">
-        <Mic className="w-8 h-8 animate-pulse" />
-        <span className="text-2xl font-bold">Talk to me instead</span>
-      </button>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full mt-6">
-        <div className="bg-yellow-100/50 p-8 rounded-3xl border-l-[12px] border-yellow-400">
-          <h3 className="text-2xl font-black text-yellow-900 mb-2">Trouble scanning?</h3>
-          <p className="text-lg text-yellow-800">Check your product manually by typing its name below.</p>
-        </div>
-        <div className="bg-surface-container-low p-8 rounded-3xl flex flex-col gap-4">
-          <div className="relative">
-            <input 
-              type="text" 
-              placeholder="e.g. Oat Milk" 
-              className="w-full h-16 bg-white rounded-2xl px-6 text-xl border-none focus:ring-4 focus:ring-primary/20"
-            />
-            <Search className="absolute right-6 top-1/2 -translate-y-1/2 w-6 h-6 text-primary" />
+        {previewUrl ? (
+          <>
+            <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
+            <button
+              onClick={clearSelection}
+              className="absolute top-4 right-4 w-10 h-10 bg-black/60 rounded-full flex items-center justify-center text-white hover:bg-black/80 transition-colors z-20"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </>
+        ) : cameraError ? (
+          <div className="w-full h-full flex flex-col items-center justify-center p-8 bg-surface-container-high text-center space-y-4">
+            <QrCode className="w-16 h-16 text-primary/30" />
+            <p className="text-lg font-bold text-on-surface">{cameraError}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-6 py-3 bg-primary text-white rounded-full font-bold active:scale-95 transition-transform"
+            >
+              Retry Camera
+            </button>
           </div>
-          <button className="h-16 w-full rounded-2xl font-bold text-xl bg-white border-2 border-primary/10 text-primary hover:bg-primary/5 transition-colors">
-            Search Manually
+        ) : (
+          <>
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className={cn(
+                "w-full h-full object-cover",
+                facingMode === 'user' && "scale-x-[-1]"
+              )}
+            />
+
+            {/* Flip Camera Button */}
+            <button
+              onClick={flipCamera}
+              className="absolute top-4 right-4 w-12 h-12 bg-black/50 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-black/70 transition-colors z-20"
+              title="Flip camera"
+            >
+              <FlipHorizontal className="w-6 h-6" />
+            </button>
+
+            {/* Viewfinder Overlay */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center p-8 bg-black/20">
+              <div className="relative w-72 h-72 border-4 border-white/40 rounded-3xl">
+                <div className="absolute -top-1 -left-1 w-10 h-10 border-t-8 border-l-8 border-yellow-400 rounded-tl-xl" />
+                <div className="absolute -top-1 -right-1 w-10 h-10 border-t-8 border-r-8 border-yellow-400 rounded-tr-xl" />
+                <div className="absolute -bottom-1 -left-1 w-10 h-10 border-b-8 border-l-8 border-yellow-400 rounded-bl-xl" />
+                <div className="absolute -bottom-1 -right-1 w-10 h-10 border-b-8 border-r-8 border-yellow-400 rounded-br-xl" />
+
+                {/* Scan Line Animation */}
+                <motion.div
+                  animate={{ top: ['0%', '100%', '0%'] }}
+                  transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                  className="absolute left-0 right-0 h-1 bg-yellow-400 shadow-[0_0_15px_#facc15] z-10"
+                />
+              </div>
+
+              <div className="mt-12 bg-black/60 backdrop-blur-md px-8 py-3 rounded-full border border-white/20">
+                <p className="text-white font-bold text-lg">Align label within the frame</p>
+              </div>
+            </div>
+
+            {isScanning && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-primary/20 backdrop-blur-sm z-30 flex items-center justify-center"
+              >
+                <div className="bg-white rounded-3xl p-8 flex flex-col items-center gap-4 shadow-2xl">
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
+                    className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full"
+                  />
+                  <p className="text-xl font-black text-on-surface">Scanning...</p>
+                </div>
+              </motion.div>
+            )}
+          </>
+        )}
+
+        <div className="absolute bottom-10 left-6 right-6 z-20 space-y-3">
+          <button
+            onClick={handleScan}
+            disabled={isScanning}
+            className={cn(
+              "bg-gradient-to-br from-primary to-primary-container text-white w-full h-20 rounded-2xl shadow-2xl flex items-center justify-center gap-4 active:scale-95 transition-transform",
+              isScanning && "opacity-60 cursor-not-allowed"
+            )}
+          >
+            <QrCode className="w-8 h-8" />
+            <span className="text-2xl font-bold">Scan Now</span>
+          </button>
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleFileChange}
+            className="hidden"
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isScanning}
+            className={cn(
+              "w-full h-14 rounded-2xl bg-white/90 backdrop-blur-md text-primary font-bold flex items-center justify-center gap-3 active:scale-95 transition-transform border border-primary/10",
+              isScanning && "opacity-60 cursor-not-allowed"
+            )}
+          >
+            <Upload className="w-5 h-5" />
+            <span className="text-lg">Upload from Device</span>
           </button>
         </div>
       </div>
-    </div>
-  </div>
-);
 
-const ResultsView = () => (
-  <div className="pt-8 pb-32 px-6 max-w-4xl mx-auto w-full space-y-8">
-    <div className="bg-primary-container text-white p-8 rounded-3xl flex items-center justify-between shadow-2xl overflow-hidden relative">
-      <div className="space-y-1 z-10">
-        <span className="text-on-primary-container text-sm font-black uppercase tracking-widest opacity-80">Currently Playing</span>
-        <h2 className="text-4xl font-black">Reading Aloud...</h2>
+      {uploadError && (
+        <div className="mt-4 bg-red-50 text-red-700 px-6 py-3 rounded-2xl text-sm font-bold flex items-center gap-2 w-full max-w-4xl">
+          <span className="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0" />
+          {uploadError}
+        </div>
+      )}
+
+      <div className="mt-12 flex flex-col items-center gap-6 w-full">
+        <button className="flex items-center gap-4 bg-gradient-to-r from-primary to-secondary-container text-white px-10 py-5 rounded-full shadow-2xl hover:shadow-primary/30 active:scale-95 transition-all group">
+          <Mic className="w-8 h-8 animate-pulse" />
+          <span className="text-2xl font-bold">Talk to me instead</span>
+        </button>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full mt-6">
+          <div className="bg-yellow-100/50 p-8 rounded-3xl border-l-[12px] border-yellow-400">
+            <h3 className="text-2xl font-black text-yellow-900 mb-2">Trouble scanning?</h3>
+            <p className="text-lg text-yellow-800">Check your product manually by typing its name below.</p>
+          </div>
+          <div className="bg-surface-container-low p-8 rounded-3xl flex flex-col gap-4">
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="e.g. Oat Milk"
+                className="w-full h-16 bg-white rounded-2xl px-6 text-xl border-none focus:ring-4 focus:ring-primary/20"
+              />
+              <Search className="absolute right-6 top-1/2 -translate-y-1/2 w-6 h-6 text-primary" />
+            </div>
+            <button className="h-16 w-full rounded-2xl font-bold text-xl bg-white border-2 border-primary/10 text-primary hover:bg-primary/5 transition-colors">
+              Search Manually
+            </button>
+          </div>
+        </div>
       </div>
-      <div className="flex gap-2 items-end h-16 z-10">
-        <motion.div animate={{ height: [20, 48, 24] }} transition={{ repeat: Infinity, duration: 0.8 }} className="audio-wave-bar bg-white/40" />
-        <motion.div animate={{ height: [30, 64, 40] }} transition={{ repeat: Infinity, duration: 0.6 }} className="audio-wave-bar bg-white" />
-        <motion.div animate={{ height: [15, 32, 20] }} transition={{ repeat: Infinity, duration: 0.9 }} className="audio-wave-bar bg-white/60" />
-        <motion.div animate={{ height: [25, 56, 30] }} transition={{ repeat: Infinity, duration: 0.7 }} className="audio-wave-bar bg-white/80" />
+    </div>
+  );
+};
+
+const QuestionView = ({
+  imagePath,
+  onAnalyze,
+  isAnalyzing,
+}: {
+  imagePath: string;
+  onAnalyze: (question: string) => void;
+  isAnalyzing: boolean;
+}) => {
+  const [question, setQuestion] = useState('');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!question.trim() || isAnalyzing) return;
+    onAnalyze(question.trim());
+  };
+
+  return (
+    <div className="flex flex-col items-center pt-8 pb-32 px-6 max-w-4xl mx-auto w-full">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="w-full space-y-6"
+      >
+        <div className="text-center">
+          <h2 className="text-5xl font-black leading-tight text-on-surface mb-4">Ask About Your Product</h2>
+          <p className="text-xl font-medium text-on-surface-variant max-w-2xl mx-auto">
+            We have captured your product label. Type your question right on the image.
+          </p>
+        </div>
+
+        {/* Scanned Image Preview with overlaid question input */}
+        <div className="relative w-full aspect-[4/3] rounded-3xl overflow-hidden shadow-2xl bg-surface-container-highest group">
+          <img src={imagePath} alt="Scanned product" className="w-full h-full object-cover" />
+
+          {/* Top badge */}
+          <div className="absolute top-4 left-4 bg-primary text-white px-4 py-1.5 rounded-full text-sm font-black uppercase tracking-wider z-10">
+            Scanned Label
+          </div>
+
+          {/* Bottom overlay with input */}
+          <form onSubmit={handleSubmit} className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent p-6 pt-16 z-10">
+            <div className="relative flex items-center gap-3">
+              <input
+                type="text"
+                value={question}
+                onChange={(e) => setQuestion(e.target.value)}
+                placeholder="Type your question here..."
+                className="flex-1 h-14 bg-white/90 backdrop-blur-md rounded-full px-6 text-lg font-bold text-on-surface placeholder:text-on-surface-variant/60 border-none focus:ring-4 focus:ring-primary/30 transition-all shadow-xl"
+                disabled={isAnalyzing}
+              />
+              <button
+                type="submit"
+                disabled={!question.trim() || isAnalyzing}
+                className={cn(
+                  'h-14 px-6 rounded-full bg-primary text-white font-bold text-lg flex items-center gap-2 transition-all active:scale-95 shadow-xl whitespace-nowrap',
+                  (!question.trim() || isAnalyzing) && 'opacity-50 cursor-not-allowed'
+                )}
+              >
+                {isAnalyzing ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <>
+                    <Sparkles className="w-5 h-5" />
+                    Analyze
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Quick suggestion chips */}
+            <div className="flex flex-wrap gap-2 mt-4 justify-center">
+              {['Does it contain Vitamin C?', 'Is it good for diabetics?', 'Any allergens?', 'Is it vegan?'].map((q) => (
+                <button
+                  key={q}
+                  type="button"
+                  onClick={() => setQuestion(q)}
+                  disabled={isAnalyzing}
+                  className="px-4 py-2 bg-white/20 backdrop-blur-md rounded-full text-sm font-bold text-white hover:bg-white/40 transition-colors disabled:opacity-50 border border-white/20"
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+          </form>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
+const ResultsView = ({
+  imagePath,
+  question,
+  result,
+  onScanAnother,
+}: {
+  imagePath: string;
+  question: string;
+  result: AnalysisResult;
+  onScanAnother: () => void;
+}) => (
+  <div className="pt-8 pb-32 px-6 max-w-4xl mx-auto w-full space-y-8">
+    {/* Header */}
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+      className="bg-primary-container text-white p-8 rounded-3xl flex items-center justify-between shadow-2xl overflow-hidden relative"
+    >
+      <div className="space-y-1 z-10">
+        <span className="text-on-primary-container text-sm font-black uppercase tracking-widest opacity-80">AI Analysis Complete</span>
+        <h2 className="text-4xl font-black">Here is the Answer</h2>
+      </div>
+      <div className="z-10">
+        <Sparkles className="w-12 h-12 text-white" />
       </div>
       <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-20 -mt-20 blur-3xl" />
-    </div>
+    </motion.div>
 
-    <section className="bg-surface-container-low rounded-3xl p-10 flex flex-col items-center text-center space-y-8">
-      <div className="w-24 h-24 bg-tertiary rounded-full flex items-center justify-center shadow-2xl shadow-tertiary/20">
-        <CheckCircle className="text-white w-14 h-14" />
+    {/* Question Card */}
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: 0.1 }}
+      className="bg-white p-8 rounded-3xl shadow-sm border border-black/5"
+    >
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
+          <MessageCircle className="w-5 h-5 text-primary" />
+        </div>
+        <p className="text-sm font-black text-primary uppercase tracking-wider">Your Question</p>
       </div>
-      <div className="space-y-3">
-        <h3 className="text-5xl font-black text-on-surface tracking-tight">Safe to Use</h3>
-        <p className="text-on-surface-variant text-2xl font-medium">This product meets all safety standards for your profile.</p>
+      <p className="text-2xl font-bold text-on-surface">{question}</p>
+    </motion.div>
+
+    {/* DeepSeek Answer */}
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: 0.2 }}
+      className="bg-gradient-to-br from-primary to-primary-container text-white p-10 rounded-3xl shadow-2xl"
+    >
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+          <Sparkles className="w-6 h-6 text-white" />
+        </div>
+        <div>
+          <p className="text-sm font-black uppercase tracking-widest opacity-80">DeepSeek AI Analysis</p>
+          <h3 className="text-3xl font-black">Expert Verdict</h3>
+        </div>
       </div>
-      <button className="bg-primary text-white px-12 py-6 rounded-full flex items-center gap-4 text-2xl font-bold hover:bg-primary-container transition-all active:scale-95 shadow-xl">
-        <Mic className="w-8 h-8" />
-        Listen to Summary
-      </button>
-    </section>
+      <div className="text-xl font-medium leading-relaxed whitespace-pre-wrap">
+        {result.deepseekResult}
+      </div>
+    </motion.div>
 
     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-      <div className="bg-white p-8 rounded-3xl shadow-sm border border-black/5 flex flex-col h-full ring-1 ring-black/5">
+      {/* Extracted Ingredients / Nutrients */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.3 }}
+        className="bg-white p-8 rounded-3xl shadow-sm border border-black/5 flex flex-col h-full ring-1 ring-black/5"
+      >
         <div className="flex justify-between items-start mb-8">
           <div className="flex items-center gap-4">
             <Zap className="w-8 h-8 text-primary" />
-            <h4 className="text-3xl font-black">Ingredients</h4>
+            <h4 className="text-3xl font-black">Extracted Label</h4>
           </div>
-          <button className="w-14 h-14 rounded-full bg-surface-container-low flex items-center justify-center text-primary active:scale-90 transition-transform">
-            <Volume2 className="w-6 h-6" />
-          </button>
         </div>
-        <ul className="space-y-4 flex-grow">
-          {['Purified Water', 'Organic Aloe Vera', 'Vitamin E Acetate'].map((item) => (
-            <li key={item} className="flex items-center gap-4 p-5 bg-surface-container-low rounded-2xl transition-all hover:translate-x-2">
-              <div className="w-4 h-4 rounded-full bg-tertiary" />
-              <span className="text-xl font-bold text-on-surface">{item}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
+        <div className="text-lg font-medium leading-relaxed text-on-surface-variant whitespace-pre-wrap flex-grow">
+          {result.extractedText}
+        </div>
+      </motion.div>
 
-      <div className="bg-white p-8 rounded-3xl shadow-sm border border-black/5 flex flex-col h-full ring-1 ring-black/5">
-        <div className="flex justify-between items-start mb-8">
-          <div className="flex items-center gap-4">
-            <ShieldCheck className="w-8 h-8 text-tertiary" />
-            <h4 className="text-3xl font-black">Benefits</h4>
-          </div>
-          <button className="w-14 h-14 rounded-full bg-surface-container-low flex items-center justify-center text-primary active:scale-90 transition-transform">
-            <Volume2 className="w-6 h-6" />
-          </button>
+      {/* Product Image */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.4 }}
+        className="bg-white p-8 rounded-3xl shadow-sm border border-black/5 flex flex-col h-full ring-1 ring-black/5"
+      >
+        <div className="flex items-center gap-4 mb-8">
+          <ShieldCheck className="w-8 h-8 text-tertiary" />
+          <h4 className="text-3xl font-black">Product Image</h4>
         </div>
-        <p className="text-xl font-medium leading-relaxed text-on-surface-variant mb-8">
-          Provides deep hydration for sensitive skin. The organic components promote natural healing and barrier repair without harsh chemicals.
-        </p>
         <div className="mt-auto">
-          <img 
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuBhIbw6seAdEH4ZVXuChYiZF9K0OyPaEi65MX4lwJpj1ju2NrlRrgFvqkHi6bnk_Px1tH-SxlXutOQCE1r5fU6_YPVR62faYoOFjsoDdlFI-jqL9VuzqzrI3wFRPVqyPpEpeWnFsLFZtCXzdzcpwm6NF9nGNm4mlOgsv9xhaUe38ZTaAz12cvDXgkBe2NGqs7DFPPbCgGVMQx3rydVqmg_fsMSTtbdsA5lY8U-lITkGKad6dUezPsExlP_5dn8ZxeXnR5UL6WYmgf0W" 
-            alt="Product visual" 
-            className="w-full h-48 object-cover rounded-2xl shadow-inner"
+          <img
+            src={imagePath}
+            alt="Scanned product"
+            className="w-full h-64 object-cover rounded-2xl shadow-inner"
           />
         </div>
-      </div>
+      </motion.div>
     </div>
 
-    <div className="bg-surface-container-highest/30 p-10 rounded-3xl flex flex-col md:flex-row items-center gap-12 border border-primary/10">
-      <div className="flex-1 space-y-8">
-        <div className="flex items-center gap-4">
-          <ShieldCheck className="w-10 h-10 text-primary" />
-          <h4 className="text-4xl font-black">Safety Check</h4>
-        </div>
-        <p className="text-2xl font-bold text-on-surface leading-tight">
-          Our AI analysis confirms no allergens detected based on your medical history. This product is 100% compatible with your "Sensitive Skin" profile.
-        </p>
-        <button className="bg-primary text-white px-10 py-5 rounded-full flex items-center gap-4 font-black transition-all active:scale-95 shadow-xl hover:shadow-primary/40">
-          <Mic className="w-7 h-7" />
-          HEAR DETAILED SAFETY REPORT
-        </button>
-      </div>
-      <div className="w-full md:w-1/3">
-        <div className="aspect-square bg-white rounded-3xl p-10 shadow-2xl flex flex-col items-center justify-center text-center space-y-4 ring-1 ring-black/5">
-          <div className="text-8xl font-black text-tertiary">0</div>
-          <div className="text-sm font-black uppercase tracking-widest text-on-surface-variant">Harmful Chemicals Found</div>
-          <div className="w-full h-3 bg-surface-container-low rounded-full overflow-hidden mt-4">
-            <motion.div initial={{ width: 0 }} animate={{ width: '0%' }} className="h-full bg-tertiary" />
-          </div>
-        </div>
-      </div>
-    </div>
+    {/* Scan Another */}
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: 0.5 }}
+      className="text-center pt-8"
+    >
+      <button
+        onClick={onScanAnother}
+        className="bg-primary text-white px-12 py-6 rounded-full text-2xl font-bold hover:bg-primary-container transition-all active:scale-95 shadow-xl inline-flex items-center gap-4"
+      >
+        <QrCode className="w-8 h-8" />
+        Scan Another Product
+      </button>
+    </motion.div>
   </div>
 );
 
@@ -366,11 +772,84 @@ const LearnView = () => (
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('check');
   const [audioOn, setAudioOn] = useState(true);
+  const [scanImagePath, setScanImagePath] = useState<string | null>(null);
+  const [userQuestion, setUserQuestion] = useState('');
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const { isAuthenticated, user } = useAuth();
+
+  const handleScan = (imagePath: string) => {
+    setScanImagePath(imagePath);
+    setAnalysisResult(null);
+    setUserQuestion('');
+    setCurrentScreen('question');
+  };
+
+  const handleAnalyze = async (question: string) => {
+    if (!scanImagePath || !user) return;
+    setUserQuestion(question);
+    setIsAnalyzing(true);
+
+    try {
+      const res = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          imagePath: scanImagePath,
+          question,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Analysis failed');
+      }
+
+      setAnalysisResult({
+        extractedText: data.extractedText,
+        deepseekResult: data.deepseekResult,
+        savedPath: data.savedPath,
+      });
+      setCurrentScreen('results');
+    } catch (err: any) {
+      alert(err.message || 'Analysis failed. Please try again.');
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleScanAnother = () => {
+    setScanImagePath(null);
+    setAnalysisResult(null);
+    setUserQuestion('');
+    setCurrentScreen('check');
+  };
 
   const renderScreen = () => {
     switch (currentScreen) {
-      case 'check': return <ScannerView onScan={() => setCurrentScreen('results')} />;
-      case 'results': return <ResultsView />;
+      case 'check': return <ScannerView onScan={handleScan} />;
+      case 'question':
+        return scanImagePath ? (
+          <QuestionView
+            imagePath={scanImagePath}
+            onAnalyze={handleAnalyze}
+            isAnalyzing={isAnalyzing}
+          />
+        ) : (
+          <ScannerView onScan={handleScan} />
+        );
+      case 'results':
+        return scanImagePath && analysisResult ? (
+          <ResultsView
+            imagePath={scanImagePath}
+            question={userQuestion}
+            result={analysisResult}
+            onScanAnother={handleScanAnother}
+          />
+        ) : (
+          <ScannerView onScan={handleScan} />
+        );
       case 'learn': return <LearnView />;
       case 'history': return (
         <div className="flex flex-col items-center justify-center h-[70vh] px-10 text-center">
@@ -395,13 +874,23 @@ export default function App() {
           <p className="text-2xl text-on-surface-variant">Ask me anything about your product.</p>
         </div>
       );
-      default: return <ScannerView onScan={() => setCurrentScreen('results')} />;
+      case 'profile': return <ProfileScreen onBack={() => setCurrentScreen('check')} />;
+      default: return <ScannerView onScan={handleScan} />;
     }
   };
 
+  if (!isAuthenticated) {
+    return <AuthScreen />;
+  }
+
   return (
     <div className="min-h-screen pb-32">
-      <Header audioOn={audioOn} setAudioOn={setAudioOn} />
+      <Header 
+        audioOn={audioOn} 
+        setAudioOn={setAudioOn} 
+        user={user}
+        onProfileClick={() => setCurrentScreen('profile')}
+      />
       
       <main className="pt-24 min-h-[calc(100vh-80px)]">
         <AnimatePresence mode="wait">
@@ -421,8 +910,11 @@ export default function App() {
         <NavItem 
           icon={CheckCircle} 
           label="Check" 
-          active={currentScreen === 'check' || currentScreen === 'results'} 
-          onClick={() => setCurrentScreen('check')} 
+          active={currentScreen === 'check' || currentScreen === 'question' || currentScreen === 'results'} 
+          onClick={() => {
+            handleScanAnother();
+            setCurrentScreen('check');
+          }} 
         />
         <NavItem 
           icon={HistoryIcon} 
