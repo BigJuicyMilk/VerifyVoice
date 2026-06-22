@@ -26,7 +26,11 @@ import {
   Sparkles,
   MessageCircle,
   ArrowRight,
-  Loader2
+  Loader2,
+  ChevronDown,
+  ChevronUp,
+  Clock,
+  RotateCcw
 } from 'lucide-react';
 import { cn } from './lib/utils';
 import { useAuth } from './context/AuthContext';
@@ -34,9 +38,18 @@ import AuthScreen from './components/AuthScreen';
 import ProfileScreen from './components/ProfileScreen';
 
 // --- Types ---
-type Screen = 'check' | 'question' | 'results' | 'history' | 'talk' | 'learn' | 'profile';
+type Screen = 'check' | 'question' | 'results' | 'history' | 'learn' | 'profile';
 
 interface AnalysisResult {
+  extractedText: string;
+  analysisResult: string;
+  savedPath: string;
+}
+
+interface HistoryRecord {
+  timestamp: string;
+  imagePath: string;
+  question: string;
   extractedText: string;
   analysisResult: string;
   savedPath: string;
@@ -668,6 +681,162 @@ const ResultsView = ({
   </div>
 );
 
+const HistoryView = ({
+  onSelect,
+}: {
+  onSelect: (record: HistoryRecord) => void;
+}) => {
+  const { user } = useAuth();
+  const [records, setRecords] = useState<HistoryRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const loadHistory = useCallback(async () => {
+    if (!user) return;
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch(`/api/history/${encodeURIComponent(user.id)}`);
+      if (!res.ok) throw new Error('Failed to load history');
+      const data = await res.json();
+      setRecords(data);
+    } catch (e: any) {
+      setError(e.message || 'Failed to load history');
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    loadHistory();
+  }, [loadHistory]);
+
+  const formatDate = (timestamp: string) => {
+    try {
+      return new Date(timestamp).toLocaleString();
+    } catch {
+      return timestamp;
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[70vh] px-10 text-center">
+        <Loader2 className="w-12 h-12 text-primary animate-spin mb-4" />
+        <p className="text-xl font-bold text-on-surface-variant">Loading your history...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[70vh] px-10 text-center">
+        <HistoryIcon className="w-24 h-24 text-red-200 mb-8" />
+        <h2 className="text-4xl font-black mb-4">Could Not Load History</h2>
+        <p className="text-xl text-on-surface-variant mb-6">{error}</p>
+        <button
+          onClick={loadHistory}
+          className="bg-primary text-white px-8 py-3 rounded-full font-bold flex items-center gap-2 active:scale-95 transition-transform"
+        >
+          <RotateCcw className="w-5 h-5" />
+          Try Again
+        </button>
+      </div>
+    );
+  }
+
+  if (records.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[70vh] px-10 text-center">
+        <HistoryIcon className="w-24 h-24 text-primary/20 mb-8" />
+        <h2 className="text-4xl font-black mb-4">No History Yet</h2>
+        <p className="text-xl text-on-surface-variant">Products you scan will appear here.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="pt-8 pb-32 px-6 max-w-4xl mx-auto w-full space-y-6">
+      <div className="text-center mb-8">
+        <h2 className="text-5xl font-black leading-tight text-on-surface mb-4">Your Scan History</h2>
+        <p className="text-xl font-medium text-on-surface-variant">
+          Review your past ingredient-list checks.
+        </p>
+      </div>
+
+      {records.map((record, index) => {
+        const isExpanded = expandedId === record.savedPath;
+        return (
+          <motion.div
+            key={record.savedPath}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: index * 0.05 }}
+            className="bg-white rounded-3xl shadow-sm border border-black/5 overflow-hidden"
+          >
+            <div className="p-6 flex items-start gap-4">
+              <button
+                onClick={() => onSelect(record)}
+                className="w-20 h-20 rounded-2xl overflow-hidden flex-shrink-0 bg-surface-container-low"
+              >
+                <img
+                  src={record.imagePath}
+                  alt="Scanned product"
+                  className="w-full h-full object-cover"
+                />
+              </button>
+              <div className="flex-1 min-w-0">
+                <button
+                  onClick={() => onSelect(record)}
+                  className="text-left w-full"
+                >
+                  <p className="text-xl font-bold text-on-surface line-clamp-2 mb-1">
+                    {record.question}
+                  </p>
+                </button>
+                <div className="flex items-center gap-2 text-on-surface-variant text-sm font-medium">
+                  <Clock className="w-4 h-4" />
+                  {formatDate(record.timestamp)}
+                </div>
+              </div>
+              <button
+                onClick={() => setExpandedId(isExpanded ? null : record.savedPath)}
+                className="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center text-primary hover:bg-primary/10 transition-colors flex-shrink-0"
+              >
+                {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+              </button>
+            </div>
+
+            <AnimatePresence>
+              {isExpanded && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden"
+                >
+                  <div className="px-6 pb-6 space-y-4">
+                    <div className="bg-primary/5 rounded-2xl p-5">
+                      <p className="text-sm font-black text-primary uppercase tracking-wider mb-2">AI Answer</p>
+                      <p className="text-lg font-medium text-on-surface whitespace-pre-wrap">{record.analysisResult}</p>
+                    </div>
+                    <div className="bg-surface-container-low rounded-2xl p-5">
+                      <p className="text-sm font-black text-on-surface-variant uppercase tracking-wider mb-2">Extracted Ingredients</p>
+                      <p className="text-base font-medium text-on-surface-variant whitespace-pre-wrap">{record.extractedText}</p>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+        );
+      })}
+    </div>
+  );
+};
+
 const LearnView = () => (
   <div className="pt-8 pb-32 px-6 max-w-5xl mx-auto w-full space-y-12">
     <div className="flex items-center gap-6 p-8 bg-surface-container-low rounded-3xl border-l-[12px] border-primary animate-pulse">
@@ -839,6 +1008,17 @@ export default function App() {
     setCurrentScreen('question');
   };
 
+  const handleHistorySelect = (record: HistoryRecord) => {
+    setScanImagePath(record.imagePath);
+    setUserQuestion(record.question);
+    setAnalysisResult({
+      extractedText: record.extractedText,
+      analysisResult: record.analysisResult,
+      savedPath: record.savedPath,
+    });
+    setCurrentScreen('results');
+  };
+
   const renderScreen = () => {
     switch (currentScreen) {
       case 'check': return <ScannerView onScan={handleScan} />;
@@ -865,29 +1045,7 @@ export default function App() {
           <ScannerView onScan={handleScan} />
         );
       case 'learn': return <LearnView />;
-      case 'history': return (
-        <div className="flex flex-col items-center justify-center h-[70vh] px-10 text-center">
-          <HistoryIcon className="w-24 h-24 text-primary/20 mb-8" />
-          <h2 className="text-4xl font-black mb-4">No History Yet</h2>
-          <p className="text-xl text-on-surface-variant">Products you scan will appear here.</p>
-        </div>
-      );
-      case 'talk': return (
-        <div className="flex flex-col items-center justify-center h-[70vh] px-10 text-center">
-          <div className="relative mb-12">
-            <motion.div 
-              animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] }}
-              transition={{ repeat: Infinity, duration: 2 }}
-              className="absolute inset-0 bg-primary rounded-full blur-3xl"
-            />
-            <div className="relative w-48 h-48 bg-primary rounded-full flex items-center justify-center shadow-[0_0_50px_rgba(51,36,188,0.5)]">
-              <Mic className="w-20 h-20 text-white" />
-            </div>
-          </div>
-          <h2 className="text-5xl font-black mb-4">I'm Listening</h2>
-          <p className="text-2xl text-on-surface-variant">Ask me anything about your product.</p>
-        </div>
-      );
+      case 'history': return <HistoryView onSelect={handleHistorySelect} />;
       case 'profile': return <ProfileScreen onBack={() => setCurrentScreen('check')} />;
       default: return <ScannerView onScan={handleScan} />;
     }
@@ -935,12 +1093,6 @@ export default function App() {
           label="History" 
           active={currentScreen === 'history'} 
           onClick={() => setCurrentScreen('history')} 
-        />
-        <NavItem 
-          icon={Mic} 
-          label="Talk" 
-          active={currentScreen === 'talk'} 
-          onClick={() => setCurrentScreen('talk')} 
         />
         <NavItem 
           icon={GraduationCap} 

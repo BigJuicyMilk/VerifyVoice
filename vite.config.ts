@@ -334,6 +334,63 @@ function userDataPlugin(env: EnvVars): Plugin {
         next();
       });
 
+      // --- History API ---
+      server.middlewares.use('/api/history', async (req, res, next) => {
+        if (!req.url || !req.url.startsWith('/')) {
+          next();
+          return;
+        }
+
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+        if (req.method === 'OPTIONS') {
+          res.statusCode = 204;
+          res.end();
+          return;
+        }
+
+        if (req.method === 'GET') {
+          try {
+            const rawUserId = req.url.slice(1).split('?')[0];
+            const safeUserId = decodeURIComponent(rawUserId).trim().replace(/[^a-zA-Z0-9_-]/g, '');
+            const userDir = path.join(analysisDir, safeUserId);
+            if (!fs.existsSync(userDir)) {
+              res.end(JSON.stringify([]));
+              return;
+            }
+
+            const files = fs.readdirSync(userDir)
+              .filter((f) => f.endsWith('.json'))
+              .sort((a, b) => b.localeCompare(a));
+
+            const records = files.map((f) => {
+              const filePath = path.join(userDir, f);
+              let record: Record<string, any> = {};
+              try {
+                record = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+              } catch {
+                // ignore malformed record
+              }
+              return {
+                ...record,
+                savedPath: `/analysis/${safeUserId}/${f}`,
+              };
+            });
+
+            res.end(JSON.stringify(records));
+          } catch (err: any) {
+            res.statusCode = 500;
+            res.end(JSON.stringify({ error: 'Failed to load history: ' + err.message }));
+          }
+          return;
+        }
+
+        next();
+      });
+
       // --- Serve Uploaded Images Statically ---
       server.middlewares.use('/uploads', async (req, res, next) => {
         if (!req.url || req.url === '/') {
