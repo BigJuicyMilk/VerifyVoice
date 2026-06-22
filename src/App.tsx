@@ -38,7 +38,7 @@ type Screen = 'check' | 'question' | 'results' | 'history' | 'talk' | 'learn' | 
 
 interface AnalysisResult {
   extractedText: string;
-  deepseekResult: string;
+  analysisResult: string;
   savedPath: string;
 }
 
@@ -580,7 +580,7 @@ const ResultsView = ({
       <p className="text-2xl font-bold text-on-surface">{question}</p>
     </motion.div>
 
-    {/* DeepSeek Answer */}
+    {/* AI Answer */}
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
@@ -592,12 +592,12 @@ const ResultsView = ({
           <Sparkles className="w-6 h-6 text-white" />
         </div>
         <div>
-          <p className="text-sm font-black uppercase tracking-widest opacity-80">DeepSeek AI Analysis</p>
+          <p className="text-sm font-black uppercase tracking-widest opacity-80">AI Analysis</p>
           <h3 className="text-3xl font-black">Expert Verdict</h3>
         </div>
       </div>
       <div className="text-xl font-medium leading-relaxed whitespace-pre-wrap">
-        {result.deepseekResult}
+        {result.analysisResult}
       </div>
     </motion.div>
 
@@ -806,7 +806,7 @@ export default function App() {
 
       setAnalysisResult({
         extractedText: data.extractedText,
-        deepseekResult: data.deepseekResult,
+        analysisResult: data.analysisResult,
         savedPath: data.savedPath,
       });
       setCurrentScreen('results');

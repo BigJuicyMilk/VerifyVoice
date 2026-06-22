@@ -7,6 +7,11 @@ import OpenAI from 'openai';
 
 interface EnvVars {
   GEMINI_API_KEY?: string;
+  AI_API_KEY?: string;
+  AI_MODEL?: string;
+  AI_BASE_URL?: string;
+  AI_APP_ID?: string;
+  // Legacy names kept for backward compatibility
   DEEPSEEK_API_KEY?: string;
   APP_ID?: string;
 }
@@ -254,18 +259,23 @@ function userDataPlugin(env: EnvVars): Plugin {
                 extractedText = 'Gemini API key not configured. Skipping OCR.';
               }
 
-              // Step 2: DeepSeek analysis via Qianfan endpoint (see deepseek.py)
-              let deepseekResult = '';
-              let deepseekRaw = null;
-              if (env.DEEPSEEK_API_KEY) {
+              // Step 2: LLM analysis (defaults to Qianfan DeepSeek, but provider-agnostic)
+              const llmApiKey = env.AI_API_KEY || env.DEEPSEEK_API_KEY;
+              const llmModel = env.AI_MODEL || 'deepseek-v3.2';
+              const llmBaseUrl = env.AI_BASE_URL || 'https://qianfan.baidubce.com/v2';
+              const llmAppId = env.AI_APP_ID || env.APP_ID;
+
+              let analysisResult = '';
+              let analysisRaw = null;
+              if (llmApiKey) {
                 const client = new OpenAI({
-                  apiKey: env.DEEPSEEK_API_KEY,
-                  baseURL: 'https://qianfan.baidubce.com/v2',
-                  defaultHeaders: env.APP_ID ? { appid: env.APP_ID } : undefined,
+                  apiKey: llmApiKey,
+                  baseURL: llmBaseUrl,
+                  defaultHeaders: llmAppId ? { appid: llmAppId } : undefined,
                 });
 
                 const completion = await client.chat.completions.create({
-                  model: 'deepseek-v3.2',
+                  model: llmModel,
                   messages: [
                     {
                       role: 'system',
@@ -280,12 +290,12 @@ function userDataPlugin(env: EnvVars): Plugin {
                   stream: false,
                 });
 
-                deepseekRaw = completion;
-                deepseekResult =
+                analysisRaw = completion;
+                analysisResult =
                   completion.choices?.[0]?.message?.content ||
                   'No analysis available.';
               } else {
-                deepseekResult = 'DeepSeek API key not configured. Skipping analysis.';
+                analysisResult = 'AI API key not configured. Skipping analysis.';
               }
 
               // Step 3: Save result to JSON
@@ -302,8 +312,8 @@ function userDataPlugin(env: EnvVars): Plugin {
                 imagePath,
                 question,
                 extractedText,
-                deepseekResult,
-                deepseekRaw,
+                analysisResult,
+                analysisRaw,
               };
               fs.writeFileSync(analysisFilePath, JSON.stringify(analysisRecord, null, 2), 'utf-8');
 
@@ -311,7 +321,7 @@ function userDataPlugin(env: EnvVars): Plugin {
                 JSON.stringify({
                   success: true,
                   extractedText,
-                  deepseekResult,
+                  analysisResult,
                   savedPath: `/analysis/${safeUserId}/${analysisFileName}`,
                 })
               );
@@ -371,7 +381,10 @@ export default defineConfig(({mode}) => {
     plugins: [react(), tailwindcss(), userDataPlugin(env)],
     define: {
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-      'process.env.DEEPSEEK_API_KEY': JSON.stringify(env.DEEPSEEK_API_KEY),
+      'process.env.AI_API_KEY': JSON.stringify(env.AI_API_KEY),
+      'process.env.AI_MODEL': JSON.stringify(env.AI_MODEL),
+      'process.env.AI_BASE_URL': JSON.stringify(env.AI_BASE_URL),
+      'process.env.AI_APP_ID': JSON.stringify(env.AI_APP_ID),
     },
     resolve: {
       alias: {
