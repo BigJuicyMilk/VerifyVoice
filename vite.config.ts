@@ -6,7 +6,6 @@ import {defineConfig, loadEnv, type Plugin, type ViteDevServer} from 'vite';
 import OpenAI from 'openai';
 
 interface EnvVars {
-  GEMINI_API_KEY?: string;
   AI_API_KEY?: string;
   AI_MODEL?: string;
   AI_BASE_URL?: string;
@@ -224,56 +223,57 @@ function userDataPlugin(env: EnvVars): Plugin {
                 '.bmp': 'image/bmp',
               }[path.extname(resolvedImagePath).toLowerCase()] || 'image/jpeg';
 
-              // Step 1: Gemini OCR - extract ingredients and nutrients
-              let extractedText = '';
-              if (env.GEMINI_API_KEY) {
-                const geminiRes = await fetch(
-                  `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${env.GEMINI_API_KEY}`,
-                  {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      contents: [
-                        {
-                          parts: [
-                            {
-                              text: 'Extract all ingredients from this product ingredient-list image. List them clearly and completely. Also note any nutritional information if visible. If you cannot read something, note it as [unreadable].',
-                            },
-                            {
-                              inlineData: {
-                                mimeType: mimeType,
-                                data: imageBase64,
-                              },
-                            },
-                          ],
-                        },
-                      ],
-                    }),
-                  }
-                );
-                const geminiData = await geminiRes.json();
-                extractedText =
-                  geminiData?.candidates?.[0]?.content?.parts?.[0]?.text ||
-                  'No text could be extracted from the image.';
-              } else {
-                extractedText = 'Gemini API key not configured. Skipping OCR.';
-              }
-
-              // Step 2: LLM analysis (defaults to Qianfan DeepSeek, but provider-agnostic)
+              // Use the LLM configured in .env for both OCR and analysis.
               const llmApiKey = env.AI_API_KEY || env.DEEPSEEK_API_KEY;
               const llmModel = env.AI_MODEL || 'deepseek-v3.2';
               const llmBaseUrl = env.AI_BASE_URL || 'https://qianfan.baidubce.com/v2';
               const llmAppId = env.AI_APP_ID || env.APP_ID;
 
+              let extractedText = '';
               let analysisResult = '';
               let analysisRaw = null;
-              if (llmApiKey) {
+
+              if (!llmApiKey) {
+                extractedText = 'AI API key not configured. Skipping OCR.';
+                analysisResult = 'AI API key not configured. Skipping analysis.';
+              } else {
                 const client = new OpenAI({
                   apiKey: llmApiKey,
                   baseURL: llmBaseUrl,
                   defaultHeaders: llmAppId ? { appid: llmAppId } : undefined,
                 });
 
+                // Step 1: Extract ingredients from the image using the configured LLM.
+                const extractCompletion = await client.chat.completions.create({
+                  model: llmModel,
+                  messages: [
+                    {
+                      role: 'system',
+                      content:
+                        'You extract ingredient lists from product label images. List every ingredient clearly, one per line. If you cannot read something, mark it as [unreadable].',
+                    },
+                    {
+                      role: 'user',
+                      content: [
+                        {
+                          type: 'text',
+                          text: 'Extract all ingredients from this product ingredient-list image.',
+                        },
+                        {
+                          type: 'image_url',
+                          image_url: { url: `data:${mimeType};base64,${imageBase64}` },
+                        },
+                      ],
+                    },
+                  ],
+                  stream: false,
+                });
+
+                extractedText =
+                  extractCompletion.choices?.[0]?.message?.content ||
+                  'No text could be extracted from the image.';
+
+                // Step 2: Answer the user's question based on the extracted ingredients.
                 const completion = await client.chat.completions.create({
                   model: llmModel,
                   messages: [
@@ -294,8 +294,6 @@ function userDataPlugin(env: EnvVars): Plugin {
                 analysisResult =
                   completion.choices?.[0]?.message?.content ||
                   'No analysis available.';
-              } else {
-                analysisResult = 'AI API key not configured. Skipping analysis.';
               }
 
               // Step 3: Save result to JSON
@@ -380,7 +378,6 @@ export default defineConfig(({mode}) => {
   return {
     plugins: [react(), tailwindcss(), userDataPlugin(env)],
     define: {
-      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
       'process.env.AI_API_KEY': JSON.stringify(env.AI_API_KEY),
       'process.env.AI_MODEL': JSON.stringify(env.AI_MODEL),
       'process.env.AI_BASE_URL': JSON.stringify(env.AI_BASE_URL),
