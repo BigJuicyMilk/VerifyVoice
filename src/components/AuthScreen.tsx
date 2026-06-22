@@ -65,7 +65,7 @@ function SocialLoginModal({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[100] flex items-center justify-center px-6 bg-black/40 backdrop-blur-sm"
+      className="fixed inset-0 z-[100] flex items-center justify-center px-4 sm:px-6 bg-black/40 backdrop-blur-sm"
       onClick={onClose}
     >
       <motion.div
@@ -74,7 +74,7 @@ function SocialLoginModal({
         exit={{ scale: 0.9, opacity: 0, y: 20 }}
         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-sm bg-white rounded-[2rem] p-8 shadow-2xl relative"
+        className="w-full max-w-sm bg-white rounded-2xl sm:rounded-[2rem] p-5 sm:p-8 shadow-2xl relative"
       >
         <button
           onClick={onClose}
@@ -95,7 +95,7 @@ function SocialLoginModal({
             {provider === 'wechat' && <WechatLogo />}
             {provider === 'x' && <XLogo />}
           </div>
-          <h3 className="text-2xl font-black text-on-surface">Sign in with {style.brand}</h3>
+          <h3 className="text-xl sm:text-2xl font-black text-on-surface">Sign in with {style.brand}</h3>
           <p className="text-on-surface-variant text-sm font-medium mt-1 text-center">
             Enter your details to connect your {style.brand} account.
           </p>
@@ -111,7 +111,7 @@ function SocialLoginModal({
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Your name"
-                className="w-full h-14 bg-surface-container-low rounded-2xl pl-12 pr-4 text-lg font-medium text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-4 focus:ring-primary/15 transition-all"
+                className="w-full h-12 sm:h-14 bg-surface-container-low rounded-xl sm:rounded-2xl pl-11 sm:pl-12 pr-4 text-base sm:text-lg font-medium text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-4 focus:ring-primary/15 transition-all"
                 required
               />
             </div>
@@ -126,7 +126,7 @@ function SocialLoginModal({
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
-                className="w-full h-14 bg-surface-container-low rounded-2xl pl-12 pr-4 text-lg font-medium text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-4 focus:ring-primary/15 transition-all"
+                className="w-full h-12 sm:h-14 bg-surface-container-low rounded-xl sm:rounded-2xl pl-11 sm:pl-12 pr-4 text-base sm:text-lg font-medium text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-4 focus:ring-primary/15 transition-all"
                 required
               />
             </div>
@@ -135,7 +135,7 @@ function SocialLoginModal({
           <button
             type="submit"
             className={cn(
-              'w-full h-14 rounded-2xl font-bold text-lg flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg mt-2',
+              'w-full h-12 sm:h-14 rounded-xl sm:rounded-2xl font-bold text-base sm:text-lg flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg mt-2',
               provider === 'google' && 'bg-primary text-white shadow-primary/25',
               provider === 'wechat' && 'bg-[#07C160] text-white shadow-[#07C160]/25',
               provider === 'x' && 'bg-black text-white shadow-black/25'
@@ -219,7 +219,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12 bg-surface">
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 sm:px-6 py-6 sm:py-12 bg-surface">
       <AnimatePresence>
         {socialProvider && (
           <SocialLoginModal
@@ -237,18 +237,18 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
         className="w-full max-w-md"
       >
         {/* Logo */}
-        <div className="flex flex-col items-center mb-10">
-          <div className="w-20 h-20 bg-primary rounded-3xl flex items-center justify-center shadow-xl shadow-primary/20 mb-6">
-            <AudioLines className="w-10 h-10 text-white" />
+        <div className="flex flex-col items-center mb-6 sm:mb-10">
+          <div className="w-16 h-16 sm:w-20 sm:h-20 bg-primary rounded-2xl sm:rounded-3xl flex items-center justify-center shadow-xl shadow-primary/20 mb-4 sm:mb-6">
+            <AudioLines className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
           </div>
-          <h1 className="text-4xl font-black tracking-tighter text-on-surface">Verify Voice</h1>
-          <p className="text-on-surface-variant mt-2 font-medium text-lg">
+          <h1 className="text-3xl sm:text-4xl font-black tracking-tighter text-on-surface">Verify Voice</h1>
+          <p className="text-on-surface-variant mt-2 font-medium text-base sm:text-lg">
             {mode === 'login' ? 'Welcome back' : 'Create your account'}
           </p>
         </div>
 
         {/* Form Card */}
-        <div className="bg-white rounded-[2rem] shadow-xl shadow-black/5 p-8 border border-black/5">
+        <div className="bg-white rounded-2xl sm:rounded-[2rem] shadow-xl shadow-black/5 p-5 sm:p-8 border border-black/5">
           <AnimatePresence mode="wait">
             <motion.form
               key={mode}
@@ -269,7 +269,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder="Your full name"
-                      className="w-full h-14 bg-surface-container-low rounded-2xl pl-12 pr-4 text-lg font-medium text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-4 focus:ring-primary/15 transition-all"
+                      className="w-full h-12 sm:h-14 bg-surface-container-low rounded-xl sm:rounded-2xl pl-11 sm:pl-12 pr-4 text-base sm:text-lg font-medium text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-4 focus:ring-primary/15 transition-all"
                       required
                     />
                   </div>
@@ -285,7 +285,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@example.com"
-                    className="w-full h-14 bg-surface-container-low rounded-2xl pl-12 pr-4 text-lg font-medium text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-4 focus:ring-primary/15 transition-all"
+                    className="w-full h-12 sm:h-14 bg-surface-container-low rounded-xl sm:rounded-2xl pl-11 sm:pl-12 pr-4 text-base sm:text-lg font-medium text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-4 focus:ring-primary/15 transition-all"
                     required
                   />
                 </div>
@@ -359,24 +359,24 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
           </div>
 
           {/* Social Buttons */}
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-2 sm:gap-3">
             <button
               onClick={() => setSocialProvider('google')}
-              className="h-14 rounded-2xl bg-white border-2 border-gray-200 flex items-center justify-center gap-2 font-bold text-gray-700 hover:bg-gray-50 active:scale-95 transition-all"
+              className="h-11 sm:h-14 rounded-xl sm:rounded-2xl bg-white border-2 border-gray-200 flex items-center justify-center gap-2 font-bold text-gray-700 hover:bg-gray-50 active:scale-95 transition-all"
             >
               <GoogleLogo />
               <span className="hidden sm:inline">Google</span>
             </button>
             <button
               onClick={() => setSocialProvider('wechat')}
-              className="h-14 rounded-2xl bg-[#07C160] text-white flex items-center justify-center gap-2 font-bold hover:bg-[#06ad56] active:scale-95 transition-all"
+              className="h-11 sm:h-14 rounded-xl sm:rounded-2xl bg-[#07C160] text-white flex items-center justify-center gap-2 font-bold hover:bg-[#06ad56] active:scale-95 transition-all"
             >
               <WechatLogo />
               <span className="hidden sm:inline">WeChat</span>
             </button>
             <button
               onClick={() => setSocialProvider('x')}
-              className="h-14 rounded-2xl bg-black text-white flex items-center justify-center gap-2 font-bold hover:bg-gray-900 active:scale-95 transition-all"
+              className="h-11 sm:h-14 rounded-xl sm:rounded-2xl bg-black text-white flex items-center justify-center gap-2 font-bold hover:bg-gray-900 active:scale-95 transition-all"
             >
               <XLogo />
               <span className="hidden sm:inline">X</span>
@@ -385,8 +385,8 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
         </div>
 
         {/* Toggle */}
-        <div className="text-center mt-8">
-          <p className="text-on-surface-variant font-medium">
+        <div className="text-center mt-6 sm:mt-8">
+          <p className="text-on-surface-variant font-medium text-sm sm:text-base">
             {mode === 'login' ? "Don't have an account?" : 'Already have an account?'}{' '}
             <button
               onClick={toggleMode}

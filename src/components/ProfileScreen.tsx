@@ -109,12 +109,12 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
     .slice(0, 2);
 
   return (
-    <div className="flex flex-col items-center pt-8 pb-32 px-6 max-w-2xl mx-auto w-full min-h-[calc(100vh-80px)]">
+    <div className="flex flex-col items-center pt-4 sm:pt-8 pb-24 sm:pb-32 px-4 sm:px-6 max-w-2xl mx-auto w-full min-h-[calc(100vh-80px)]">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="w-full space-y-8"
+        className="w-full space-y-5 sm:space-y-8"
       >
         {/* Back button */}
         <button
@@ -166,12 +166,12 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
         {/* Upload Section */}
         <div className="bg-white p-6 rounded-3xl shadow-sm border border-black/5 space-y-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
-              <ImageIcon className="w-5 h-5 text-primary" />
+            <div className="w-9 h-9 sm:w-10 sm:h-10 bg-primary/10 rounded-lg sm:rounded-xl flex items-center justify-center">
+              <ImageIcon className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
             </div>
             <div>
-              <h3 className="text-lg font-black text-on-surface">My Pictures</h3>
-              <p className="text-sm text-on-surface-variant font-medium">Upload and view your photos</p>
+              <h3 className="text-base sm:text-lg font-black text-on-surface">My Pictures</h3>
+              <p className="text-xs sm:text-sm text-on-surface-variant font-medium">Upload and view your photos</p>
             </div>
           </div>
 
@@ -186,15 +186,15 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
           {!selectedFile ? (
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="w-full h-20 rounded-2xl border-2 border-dashed border-primary/30 flex items-center justify-center gap-3 text-primary font-bold hover:bg-primary/5 transition-colors"
+              className="w-full h-14 sm:h-20 rounded-xl sm:rounded-2xl border-2 border-dashed border-primary/30 flex items-center justify-center gap-2 sm:gap-3 text-primary font-bold hover:bg-primary/5 transition-colors text-sm sm:text-base"
             >
-              <Upload className="w-5 h-5" />
+              <Upload className="w-4 h-4 sm:w-5 sm:h-5" />
               Choose a picture to upload
             </button>
           ) : (
             <div className="space-y-3">
               <div className="relative rounded-2xl overflow-hidden border border-black/5">
-                <img src={previewUrl!} alt="Preview" className="w-full h-48 object-cover" />
+                <img src={previewUrl!} alt="Preview" className="w-full h-40 sm:h-48 object-cover" />
                 <button
                   onClick={clearSelection}
                   className="absolute top-2 right-2 w-8 h-8 bg-black/60 rounded-full flex items-center justify-center text-white hover:bg-black/80 transition-colors"
@@ -248,10 +248,10 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
         <button
           onClick={handleLogout}
           className={cn(
-            'w-full h-16 rounded-2xl bg-red-50 text-red-600 text-xl font-bold flex items-center justify-center gap-3 transition-all active:scale-95 hover:bg-red-100 border border-red-100'
+            'w-full h-12 sm:h-16 rounded-xl sm:rounded-2xl bg-red-50 text-red-600 text-lg sm:text-xl font-bold flex items-center justify-center gap-2 sm:gap-3 transition-all active:scale-95 hover:bg-red-100 border border-red-100'
           )}
         >
-          <LogOut className="w-5 h-5" />
+          <LogOut className="w-4 h-4 sm:w-5 sm:h-5" />
           Sign Out
         </button>
       </motion.div>
