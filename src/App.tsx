@@ -540,11 +540,13 @@ const ResultsView = ({
   question,
   result,
   onScanAnother,
+  onAskAnother,
 }: {
   imagePath: string;
   question: string;
   result: AnalysisResult;
   onScanAnother: () => void;
+  onAskAnother: () => void;
 }) => (
   <div className="pt-8 pb-32 px-6 max-w-4xl mx-auto w-full space-y-8">
     {/* Header */}
@@ -641,18 +643,25 @@ const ResultsView = ({
       </motion.div>
     </div>
 
-    {/* Scan Another */}
+    {/* Continue or scan another */}
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: 0.5 }}
-      className="text-center pt-8"
+      className="text-center pt-8 flex flex-col sm:flex-row items-center justify-center gap-4"
     >
       <button
-        onClick={onScanAnother}
-        className="bg-primary text-white px-12 py-6 rounded-full text-2xl font-bold hover:bg-primary-container transition-all active:scale-95 shadow-xl inline-flex items-center gap-4"
+        onClick={onAskAnother}
+        className="bg-white text-primary border-2 border-primary px-10 py-5 rounded-full text-xl font-bold hover:bg-primary/5 transition-all active:scale-95 shadow-lg inline-flex items-center gap-3"
       >
-        <QrCode className="w-8 h-8" />
+        <MessageCircle className="w-6 h-6" />
+        Ask Another Question
+      </button>
+      <button
+        onClick={onScanAnother}
+        className="bg-primary text-white px-10 py-5 rounded-full text-xl font-bold hover:bg-primary-container transition-all active:scale-95 shadow-lg inline-flex items-center gap-3"
+      >
+        <QrCode className="w-6 h-6" />
         Scan Another Product
       </button>
     </motion.div>
@@ -824,6 +833,12 @@ export default function App() {
     setCurrentScreen('check');
   };
 
+  const handleAskAnotherQuestion = () => {
+    setAnalysisResult(null);
+    setUserQuestion('');
+    setCurrentScreen('question');
+  };
+
   const renderScreen = () => {
     switch (currentScreen) {
       case 'check': return <ScannerView onScan={handleScan} />;
@@ -844,6 +859,7 @@ export default function App() {
             question={userQuestion}
             result={analysisResult}
             onScanAnother={handleScanAnother}
+            onAskAnother={handleAskAnotherQuestion}
           />
         ) : (
           <ScannerView onScan={handleScan} />
