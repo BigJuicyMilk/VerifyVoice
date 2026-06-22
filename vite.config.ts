@@ -3,10 +3,12 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 import fs from 'fs';
 import {defineConfig, loadEnv, type Plugin, type ViteDevServer} from 'vite';
+import OpenAI from 'openai';
 
 interface EnvVars {
   GEMINI_API_KEY?: string;
   DEEPSEEK_API_KEY?: string;
+  APP_ID?: string;
 }
 
 function userDataPlugin(env: EnvVars): Plugin {
@@ -230,7 +232,7 @@ function userDataPlugin(env: EnvVars): Plugin {
                         {
                           parts: [
                             {
-                              text: 'Extract all ingredients and nutrients from this product label image. List them clearly and completely. If you cannot read something, note it as [unreadable].',
+                              text: 'Extract all ingredients from this product ingredient-list image. List them clearly and completely. Also note any nutritional information if visible. If you cannot read something, note it as [unreadable].',
                             },
                             {
                               inlineData: {
@@ -252,34 +254,35 @@ function userDataPlugin(env: EnvVars): Plugin {
                 extractedText = 'Gemini API key not configured. Skipping OCR.';
               }
 
-              // Step 2: DeepSeek analysis
+              // Step 2: DeepSeek analysis via Qianfan endpoint (see deepseek.py)
               let deepseekResult = '';
               let deepseekRaw = null;
               if (env.DEEPSEEK_API_KEY) {
-                const deepseekRes = await fetch('https://api.deepseek.com/chat/completions', {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${env.DEEPSEEK_API_KEY}`,
-                  },
-                  body: JSON.stringify({
-                    model: 'deepseek-chat',
-                    messages: [
-                      {
-                        role: 'system',
-                        content:
-                          'You are a helpful nutrition and product analysis expert. You analyze product ingredients and nutrients to answer user questions accurately, concisely, and in a friendly tone. You should be honest if you are unsure about something.',
-                      },
-                      {
-                        role: 'user',
-                        content: `Product ingredients and nutrients extracted from label:\n${extractedText}\n\nUser question: ${question}\n\nPlease analyze and answer the user's question based on the ingredients and nutrients. If the product clearly has the feature/attribute the user asks about, say so confidently. If it does not, explain why. If you are unsure, say so. Keep your answer concise but informative.`,
-                      },
-                    ],
-                  }),
+                const client = new OpenAI({
+                  apiKey: env.DEEPSEEK_API_KEY,
+                  baseURL: 'https://qianfan.baidubce.com/v2',
+                  defaultHeaders: env.APP_ID ? { appid: env.APP_ID } : undefined,
                 });
-                deepseekRaw = await deepseekRes.json();
+
+                const completion = await client.chat.completions.create({
+                  model: 'deepseek-v3.2',
+                  messages: [
+                    {
+                      role: 'system',
+                      content:
+                        'You are a helpful ingredient-list analysis expert. You read product ingredient lists and answer questions about them accurately, concisely, and in plain language. Be honest when you are unsure.',
+                    },
+                    {
+                      role: 'user',
+                      content: `Ingredients extracted from the product label:\n${extractedText}\n\nUser question: ${question}\n\nPlease answer the question based only on the ingredient list above. If the list clearly supports the answer, say so confidently. If it does not, explain why. If you are unsure, say so. Keep your answer concise but informative.`,
+                    },
+                  ],
+                  stream: false,
+                });
+
+                deepseekRaw = completion;
                 deepseekResult =
-                  deepseekRaw?.choices?.[0]?.message?.content ||
+                  completion.choices?.[0]?.message?.content ||
                   'No analysis available.';
               } else {
                 deepseekResult = 'DeepSeek API key not configured. Skipping analysis.';

@@ -282,7 +282,7 @@ const ScannerView = ({ onScan }: { onScan: (imagePath: string) => void }) => {
       <div className="text-center mb-10">
         <h2 className="text-5xl font-black leading-tight text-on-surface mb-4">Check a Product</h2>
         <p className="text-xl font-medium text-on-surface-variant max-w-2xl mx-auto">
-          Point your camera at a product or its label to see if it is a good choice for you.
+          Point your camera at an ingredient list to ask questions about what's inside.
         </p>
       </div>
 
@@ -471,9 +471,9 @@ const QuestionView = ({
         className="w-full space-y-6"
       >
         <div className="text-center">
-          <h2 className="text-5xl font-black leading-tight text-on-surface mb-4">Ask About Your Product</h2>
+          <h2 className="text-5xl font-black leading-tight text-on-surface mb-4">Ask About the Ingredients</h2>
           <p className="text-xl font-medium text-on-surface-variant max-w-2xl mx-auto">
-            We have captured your product label. What would you like to know about it?
+            We have captured the ingredient list. Ask anything about what's inside.
           </p>
         </div>
 
@@ -481,7 +481,7 @@ const QuestionView = ({
         <div className="relative w-full aspect-[4/3] rounded-3xl overflow-hidden shadow-2xl bg-surface-container-highest">
           <img src={imagePath} alt="Scanned product" className="w-full h-full object-cover" />
           <div className="absolute top-4 left-4 bg-primary text-white px-4 py-1.5 rounded-full text-sm font-black uppercase tracking-wider">
-            Scanned Label
+            Ingredient List
           </div>
         </div>
 
@@ -492,7 +492,7 @@ const QuestionView = ({
               type="text"
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
-              placeholder="e.g. Does this product have Vitamin C?"
+              placeholder="e.g. Does this contain palm oil?"
               className="flex-1 h-16 bg-white rounded-2xl px-6 text-xl font-bold text-on-surface placeholder:text-on-surface-variant/40 border-none focus:ring-4 focus:ring-primary/20 transition-all shadow-sm"
               disabled={isAnalyzing}
             />
@@ -517,7 +517,7 @@ const QuestionView = ({
 
           {/* Quick suggestion chips */}
           <div className="flex flex-wrap gap-2">
-            {['Does it contain Vitamin C?', 'Is it good for diabetics?', 'Any allergens?', 'Is it vegan?'].map((q) => (
+            {['Does it contain palm oil?', 'Is it gluten-free?', 'Any allergens?', 'Is it vegan?'].map((q) => (
               <button
                 key={q}
                 type="button"
@@ -612,7 +612,7 @@ const ResultsView = ({
         <div className="flex justify-between items-start mb-8">
           <div className="flex items-center gap-4">
             <Zap className="w-8 h-8 text-primary" />
-            <h4 className="text-3xl font-black">Extracted Label</h4>
+            <h4 className="text-3xl font-black">Extracted Ingredients</h4>
           </div>
         </div>
         <div className="text-lg font-medium leading-relaxed text-on-surface-variant whitespace-pre-wrap flex-grow">
