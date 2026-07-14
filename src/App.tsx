@@ -23,27 +23,36 @@ import {
   Upload,
   X,
   FlipHorizontal,
+  VideoOff,
+  Video,
   Sparkles,
   MessageCircle,
-  ArrowRight,
+  ArrowLeft,
   Loader2,
+  Send,
   ChevronDown,
   ChevronUp,
   Clock,
-  RotateCcw
+  RotateCcw,
+  RefreshCw,
+  Scale,
+  Globe
 } from 'lucide-react';
 import { cn } from './lib/utils';
 import { useAuth } from './context/AuthContext';
+import { useLanguage } from './context/LanguageContext';
 import AuthScreen from './components/AuthScreen';
 import ProfileScreen from './components/ProfileScreen';
 
 // --- Types ---
-type Screen = 'check' | 'question' | 'results' | 'history' | 'learn' | 'profile';
+type Screen = 'check' | 'question' | 'results' | 'history' | 'learn' | 'profile' | 'compare';
 
 interface AnalysisResult {
   extractedText: string;
   analysisResult: string;
   savedPath: string;
+  healthScore?: number | null;
+  healthReason?: string;
 }
 
 interface HistoryRecord {
@@ -53,6 +62,8 @@ interface HistoryRecord {
   extractedText: string;
   analysisResult: string;
   savedPath: string;
+  healthScore?: number | null;
+  healthReason?: string;
 }
 
 interface NavItemProps {
@@ -60,6 +71,24 @@ interface NavItemProps {
   label: string;
   active: boolean;
   onClick: () => void;
+}
+
+interface ProductInput {
+  name: string;
+  ingredients: string;
+  nutrition: string;
+}
+
+interface ProductCompareResult extends ProductInput {
+  healthScore: number;
+  pros: string[];
+  cons: string[];
+}
+
+interface CompareResult {
+  winner: number | 'tie';
+  products: ProductCompareResult[];
+  explanation: string;
 }
 
 // --- Components ---
@@ -79,6 +108,110 @@ const NavItem = ({ icon: Icon, label, active, onClick }: NavItemProps) => (
   </button>
 );
 
+const SpeechButton = ({ text, className, speechLang, ariaLabel }: { text: string; className?: string; speechLang: string; ariaLabel: string }) => {
+  const [speaking, setSpeaking] = useState(false);
+
+  const handleClick = () => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return;
+    if (speaking) {
+      window.speechSynthesis.cancel();
+      setSpeaking(false);
+      return;
+    }
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 0.95;
+    utterance.pitch = 1;
+    utterance.lang = speechLang;
+    utterance.onend = () => setSpeaking(false);
+    utterance.onerror = () => setSpeaking(false);
+    window.speechSynthesis.speak(utterance);
+    setSpeaking(true);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (typeof window !== 'undefined' && window.speechSynthesis && speaking) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, [speaking]);
+
+  return (
+    <button
+      onClick={handleClick}
+      className={cn(
+        "flex items-center justify-center rounded-full transition-all active:scale-90",
+        speaking ? "bg-primary text-white" : "bg-white/90 text-primary hover:bg-white",
+        className
+      )}
+      aria-label={ariaLabel}
+    >
+      {speaking ? <Pause className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+    </button>
+  );
+};
+
+const LanguageSwitcher = () => {
+  const { lang, setLang, t } = useLanguage();
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  const options = [
+    { code: 'en', label: 'English' },
+    { code: 'hi', label: 'हिन्दी' },
+    { code: 'ar', label: 'العربية' },
+    { code: 'zh', label: '中文' },
+    { code: 'es', label: 'Español' },
+  ] as const;
+
+  return (
+    <div ref={containerRef} className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 rounded-full bg-surface-container-low text-on-surface font-bold hover:bg-surface-container-high transition-colors"
+        aria-label={t('common.chooseLanguage')}
+      >
+        <Globe className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+        <span className="text-xs sm:text-sm uppercase tracking-wider hidden sm:inline">{options.find((o) => o.code === lang)?.label}</span>
+      </button>
+      {open && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="absolute right-0 mt-2 w-40 bg-white rounded-2xl shadow-2xl border border-black/5 overflow-hidden z-[60]"
+        >
+          {options.map((option) => (
+            <button
+              key={option.code}
+              onClick={() => {
+                setLang(option.code as typeof lang);
+                setOpen(false);
+              }}
+              className={cn(
+                'w-full px-4 py-3 text-left text-sm font-bold hover:bg-primary/5 transition-colors flex items-center justify-between',
+                lang === option.code && 'bg-primary/10 text-primary'
+              )}
+            >
+              {option.label}
+              {lang === option.code && <CheckCircle className="w-4 h-4" />}
+            </button>
+          ))}
+        </motion.div>
+      )}
+    </div>
+  );
+};
+
 const Header = ({ 
   audioOn, 
   setAudioOn, 
@@ -90,6 +223,7 @@ const Header = ({
   user: { name: string } | null;
   onProfileClick: () => void;
 }) => {
+  const { t } = useLanguage();
   const initials = user?.name
     .split(' ')
     .map((n) => n[0])
@@ -103,9 +237,10 @@ const Header = ({
         <div className="text-primary">
           <AudioLines className="w-6 h-6 sm:w-8 sm:h-8" />
         </div>
-        <h1 className="font-bold text-lg sm:text-2xl tracking-tighter text-primary">Verify Voice</h1>
+        <h1 className="font-bold text-lg sm:text-2xl tracking-tighter text-primary">{t('common.appName')}</h1>
       </div>
       <div className="flex items-center gap-2 sm:gap-3">
+        <LanguageSwitcher />
         <button 
           onClick={() => setAudioOn(!audioOn)}
           className={cn(
@@ -114,7 +249,7 @@ const Header = ({
           )}
         >
           {audioOn ? <Volume2 className="w-4 h-4 sm:w-5 sm:h-5" /> : <VolumeX className="w-4 h-4 sm:w-5 sm:h-5" />}
-          <span className="tracking-widest text-xs sm:text-sm uppercase hidden sm:inline">Audio {audioOn ? 'On' : 'Off'}</span>
+          <span className="tracking-widest text-xs sm:text-sm uppercase hidden sm:inline">{audioOn ? t('common.audioOn') : t('common.audioOff')}</span>
         </button>
         {user && (
           <button
@@ -132,6 +267,7 @@ const Header = ({
 // --- Screen Views ---
 
 const ScannerView = ({ onScan }: { onScan: (imagePath: string) => void }) => {
+  const { t } = useLanguage();
   const { user } = useAuth();
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -143,11 +279,15 @@ const ScannerView = ({ onScan }: { onScan: (imagePath: string) => void }) => {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState('');
   const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
+  const [cameraActive, setCameraActive] = useState(true);
 
   const startCamera = useCallback(async () => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
+    }
+    if (!cameraActive) {
+      return;
     }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -161,14 +301,14 @@ const ScannerView = ({ onScan }: { onScan: (imagePath: string) => void }) => {
       setCameraError(null);
     } catch (err: any) {
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        setCameraError('Camera permission denied. Please allow camera access and refresh.');
+        setCameraError(t('scanner.cameraPermissionDenied'));
       } else if (err.name === 'NotFoundError' || err.name === 'OverconstrainedError') {
-        setCameraError('This camera is not available on this device.');
+        setCameraError(t('scanner.cameraNotAvailable'));
       } else {
-        setCameraError('Could not access camera: ' + err.message);
+        setCameraError(t('scanner.cameraAccessError', { message: err.message }));
       }
     }
-  }, [facingMode]);
+  }, [facingMode, cameraActive, t]);
 
   useEffect(() => {
     let cancelled = false;
@@ -189,6 +329,17 @@ const ScannerView = ({ onScan }: { onScan: (imagePath: string) => void }) => {
 
   const flipCamera = () => {
     setFacingMode((prev) => (prev === 'environment' ? 'user' : 'environment'));
+  };
+
+  const toggleCamera = () => {
+    setCameraActive((prev) => {
+      const next = !prev;
+      if (!next && streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+      }
+      return next;
+    });
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -235,13 +386,14 @@ const ScannerView = ({ onScan }: { onScan: (imagePath: string) => void }) => {
     setUploadError('');
 
     if (!user) {
-      setUploadError('You must be logged in to save scans.');
+      setUploadError(t('scanner.loginRequired'));
       setIsScanning(false);
       return;
     }
 
     const folderName = user.id;
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    let uploadedPath = '';
 
     try {
       if (selectedFile) {
@@ -256,7 +408,9 @@ const ScannerView = ({ onScan }: { onScan: (imagePath: string) => void }) => {
             data: dataUrl,
           }),
         });
-        if (!res.ok) throw new Error('Upload failed');
+        if (!res.ok) throw new Error(t('scanner.uploadFailed'));
+        const result = await res.json();
+        uploadedPath = result.path;
       } else if (!cameraError && videoRef.current) {
         // Capture the current camera frame and upload it
         const frame = captureVideoFrame();
@@ -270,32 +424,31 @@ const ScannerView = ({ onScan }: { onScan: (imagePath: string) => void }) => {
               data: frame,
             }),
           });
-          if (!res.ok) throw new Error('Upload failed');
+          if (!res.ok) throw new Error(t('scanner.uploadFailed'));
+          const result = await res.json();
+          uploadedPath = result.path;
         }
       }
     } catch (err: any) {
-      setUploadError(err.message || 'Failed to save image. Please try again.');
+      setUploadError(err.message || t('scanner.failedSave'));
       setIsScanning(false);
       return;
     }
 
     setTimeout(() => {
       setIsScanning(false);
-      const folderName = user ? user.id : 'anonymous';
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const path = selectedFile
-        ? `/uploads/${folderName}/${selectedFile.name}`
-        : `/uploads/${folderName}/scan_${timestamp}.jpg`;
-      onScan(path);
+      if (uploadedPath) {
+        onScan(uploadedPath);
+      }
     }, 1200);
   };
 
   return (
     <div className="flex flex-col items-center pt-4 sm:pt-8 pb-24 sm:pb-32 px-4 sm:px-6 max-w-4xl mx-auto w-full">
       <div className="text-center mb-4 sm:mb-10">
-        <h2 className="text-3xl sm:text-5xl font-black leading-tight text-on-surface mb-2 sm:mb-4">Check a Product</h2>
+        <h2 className="text-3xl sm:text-5xl font-black leading-tight text-on-surface mb-2 sm:mb-4">{t('scanner.title')}</h2>
         <p className="text-base sm:text-xl font-medium text-on-surface-variant max-w-2xl mx-auto px-2 sm:px-0">
-          Point your camera at an ingredient list to ask questions about what's inside.
+          {t('scanner.description')}
         </p>
       </div>
 
@@ -305,7 +458,7 @@ const ScannerView = ({ onScan }: { onScan: (imagePath: string) => void }) => {
 
         {previewUrl ? (
           <>
-            <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
+            <img src={previewUrl} alt={t('common.previewAlt')} className="w-full h-full object-cover" />
             <button
               onClick={clearSelection}
               className="absolute top-3 right-3 sm:top-4 sm:right-4 w-8 h-8 sm:w-10 sm:h-10 bg-black/60 rounded-full flex items-center justify-center text-white hover:bg-black/80 transition-colors z-20"
@@ -321,10 +474,10 @@ const ScannerView = ({ onScan }: { onScan: (imagePath: string) => void }) => {
               onClick={() => window.location.reload()}
               className="px-4 sm:px-6 py-2 sm:py-3 bg-primary text-white rounded-full font-bold active:scale-95 transition-transform text-sm sm:text-base"
             >
-              Retry Camera
+              {t('scanner.retryCamera')}
             </button>
           </div>
-        ) : (
+        ) : cameraActive ? (
           <>
             <video
               ref={videoRef}
@@ -337,17 +490,26 @@ const ScannerView = ({ onScan }: { onScan: (imagePath: string) => void }) => {
               )}
             />
 
+            {/* Turn Camera Off Button */}
+            <button
+              onClick={toggleCamera}
+              className="absolute top-3 left-3 sm:top-4 sm:left-4 w-9 h-9 sm:w-12 sm:h-12 bg-black/50 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-black/70 transition-colors z-20"
+              title={t('scanner.turnCameraOff')}
+            >
+              <VideoOff className="w-5 h-5 sm:w-6 sm:h-6" />
+            </button>
+
             {/* Flip Camera Button */}
             <button
               onClick={flipCamera}
               className="absolute top-3 right-3 sm:top-4 sm:right-4 w-9 h-9 sm:w-12 sm:h-12 bg-black/50 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-black/70 transition-colors z-20"
-              title="Flip camera"
+              title={t('scanner.flipCamera')}
             >
               <FlipHorizontal className="w-5 h-5 sm:w-6 sm:h-6" />
             </button>
 
             {/* Viewfinder Overlay */}
-            <div className="absolute inset-0 flex flex-col items-center justify-center p-4 sm:p-8 bg-black/20">
+            <div className="absolute inset-0 flex flex-col items-center justify-center p-4 sm:p-8 bg-black/20 pointer-events-none">
               <div className="relative w-48 h-48 sm:w-60 sm:h-60 md:w-72 md:h-72 border-4 border-white/40 rounded-2xl sm:rounded-3xl">
                 <div className="absolute -top-1 -left-1 w-7 h-7 sm:w-10 sm:h-10 border-t-4 sm:border-t-8 border-l-4 sm:border-l-8 border-yellow-400 rounded-tl-lg sm:rounded-tl-xl" />
                 <div className="absolute -top-1 -right-1 w-7 h-7 sm:w-10 sm:h-10 border-t-4 sm:border-t-8 border-r-4 sm:border-r-8 border-yellow-400 rounded-tr-lg sm:rounded-tr-xl" />
@@ -363,7 +525,7 @@ const ScannerView = ({ onScan }: { onScan: (imagePath: string) => void }) => {
               </div>
 
               <div className="mt-6 sm:mt-12 bg-black/60 backdrop-blur-md px-4 sm:px-8 py-2 sm:py-3 rounded-full border border-white/20">
-                <p className="text-white font-bold text-sm sm:text-lg">Align label within the frame</p>
+                <p className="text-white font-bold text-sm sm:text-lg">{t('scanner.alignLabel')}</p>
               </div>
             </div>
 
@@ -380,11 +542,23 @@ const ScannerView = ({ onScan }: { onScan: (imagePath: string) => void }) => {
                     transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
                     className="w-8 h-8 sm:w-10 sm:h-10 border-4 border-primary/20 border-t-primary rounded-full"
                   />
-                  <p className="text-lg sm:text-xl font-black text-on-surface">Scanning...</p>
+                  <p className="text-lg sm:text-xl font-black text-on-surface">{t('scanner.scanning')}</p>
                 </div>
               </motion.div>
             )}
           </>
+        ) : (
+          <div className="w-full h-full flex flex-col items-center justify-center p-4 sm:p-8 bg-surface-container-high text-center space-y-3 sm:space-y-4">
+            <VideoOff className="w-12 h-12 sm:w-16 sm:h-16 text-primary/30" />
+            <p className="text-sm sm:text-lg font-bold text-on-surface">{t('scanner.cameraOff')}</p>
+            <button
+              onClick={toggleCamera}
+              className="px-4 sm:px-6 py-2 sm:py-3 bg-primary text-white rounded-full font-bold active:scale-95 transition-transform text-sm sm:text-base flex items-center gap-2"
+            >
+              <Video className="w-4 h-4 sm:w-5 sm:h-5" />
+              {t('scanner.turnCameraOn')}
+            </button>
+          </div>
         )}
 
         <div className="absolute bottom-4 sm:bottom-10 left-3 right-3 sm:left-6 sm:right-6 z-20 space-y-2 sm:space-y-3">
@@ -397,7 +571,7 @@ const ScannerView = ({ onScan }: { onScan: (imagePath: string) => void }) => {
             )}
           >
             <QrCode className="w-6 h-6 sm:w-8 sm:h-8" />
-            <span className="text-lg sm:text-2xl font-bold">Scan Now</span>
+            <span className="text-lg sm:text-2xl font-bold">{t('scanner.scanNow')}</span>
           </button>
 
           <input
@@ -416,7 +590,7 @@ const ScannerView = ({ onScan }: { onScan: (imagePath: string) => void }) => {
             )}
           >
             <Upload className="w-4 h-4 sm:w-5 sm:h-5" />
-            <span>Upload from Device</span>
+            <span>{t('scanner.uploadFromDevice')}</span>
           </button>
         </div>
       </div>
@@ -431,20 +605,20 @@ const ScannerView = ({ onScan }: { onScan: (imagePath: string) => void }) => {
       <div className="mt-8 sm:mt-12 flex flex-col items-center gap-4 sm:gap-6 w-full">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 w-full mt-4 sm:mt-6">
           <div className="bg-yellow-100/50 p-5 sm:p-8 rounded-2xl sm:rounded-3xl border-l-[8px] sm:border-l-[12px] border-yellow-400">
-            <h3 className="text-xl sm:text-2xl font-black text-yellow-900 mb-1 sm:mb-2">Trouble scanning?</h3>
-            <p className="text-base sm:text-lg text-yellow-800">Check your product manually by typing its name below.</p>
+            <h3 className="text-xl sm:text-2xl font-black text-yellow-900 mb-1 sm:mb-2">{t('scanner.troubleScanning')}</h3>
+            <p className="text-base sm:text-lg text-yellow-800">{t('scanner.troubleDescription')}</p>
           </div>
           <div className="bg-surface-container-low p-5 sm:p-8 rounded-2xl sm:rounded-3xl flex flex-col gap-3 sm:gap-4">
             <div className="relative">
               <input
                 type="text"
-                placeholder="e.g. Oat Milk"
+                placeholder={t('scanner.searchPlaceholder')}
                 className="w-full h-12 sm:h-16 bg-white rounded-xl sm:rounded-2xl px-4 sm:px-6 text-base sm:text-xl border-none focus:ring-4 focus:ring-primary/20"
               />
               <Search className="absolute right-4 sm:right-6 top-1/2 -translate-y-1/2 w-5 h-5 sm:w-6 sm:h-6 text-primary" />
             </div>
             <button className="h-12 sm:h-16 w-full rounded-xl sm:rounded-2xl font-bold text-base sm:text-xl bg-white border-2 border-primary/10 text-primary hover:bg-primary/5 transition-colors">
-              Search Manually
+              {t('scanner.searchManually')}
             </button>
           </div>
         </div>
@@ -462,6 +636,7 @@ const QuestionView = ({
   onAnalyze: (question: string) => void;
   isAnalyzing: boolean;
 }) => {
+  const { t } = useLanguage();
   const [question, setQuestion] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -469,6 +644,13 @@ const QuestionView = ({
     if (!question.trim() || isAnalyzing) return;
     onAnalyze(question.trim());
   };
+
+  const suggestions = [
+    t('question.palmOil'),
+    t('question.glutenFree'),
+    t('question.allergens'),
+    t('question.vegan'),
+  ];
 
   return (
     <div className="flex flex-col items-center pt-4 sm:pt-8 pb-24 sm:pb-32 px-4 sm:px-6 max-w-4xl mx-auto w-full">
@@ -479,17 +661,17 @@ const QuestionView = ({
         className="w-full space-y-4 sm:space-y-6"
       >
         <div className="text-center">
-          <h2 className="text-3xl sm:text-5xl font-black leading-tight text-on-surface mb-2 sm:mb-4">Ask About the Ingredients</h2>
+          <h2 className="text-3xl sm:text-5xl font-black leading-tight text-on-surface mb-2 sm:mb-4">{t('question.title')}</h2>
           <p className="text-base sm:text-xl font-medium text-on-surface-variant max-w-2xl mx-auto px-2 sm:px-0">
-            We have captured the ingredient list. Ask anything about what's inside.
+            {t('question.description')}
           </p>
         </div>
 
         {/* Scanned Image Preview */}
         <div className="relative w-full aspect-[4/3] rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl bg-surface-container-highest">
-          <img src={imagePath} alt="Scanned product" className="w-full h-full object-cover" />
+          <img src={imagePath} alt={t('common.scannedProductAlt')} className="w-full h-full object-cover" />
           <div className="absolute top-3 left-3 sm:top-4 sm:left-4 bg-primary text-white px-3 sm:px-4 py-1 sm:py-1.5 rounded-full text-xs sm:text-sm font-black uppercase tracking-wider">
-            Ingredient List
+            {t('question.ingredientList')}
           </div>
         </div>
 
@@ -500,7 +682,7 @@ const QuestionView = ({
               type="text"
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
-              placeholder="e.g. Does this contain palm oil?"
+              placeholder={t('question.placeholder')}
               className="flex-1 h-12 sm:h-16 bg-white rounded-xl sm:rounded-2xl px-4 sm:px-6 text-base sm:text-xl font-bold text-on-surface placeholder:text-on-surface-variant/40 border-none focus:ring-4 focus:ring-primary/20 transition-all shadow-sm"
               disabled={isAnalyzing}
             />
@@ -517,7 +699,7 @@ const QuestionView = ({
               ) : (
                 <>
                   <Sparkles className="w-5 h-5 sm:w-6 sm:h-6" />
-                  Analyze
+                  {t('question.analyze')}
                 </>
               )}
             </button>
@@ -525,7 +707,7 @@ const QuestionView = ({
 
           {/* Quick suggestion chips */}
           <div className="flex flex-wrap gap-2">
-            {['Does it contain palm oil?', 'Is it gluten-free?', 'Any allergens?', 'Is it vegan?'].map((q) => (
+            {suggestions.map((q) => (
               <button
                 key={q}
                 type="button"
@@ -555,132 +737,543 @@ const ResultsView = ({
   result: AnalysisResult;
   onScanAnother: () => void;
   onAskAnother: () => void;
-}) => (
-  <div className="pt-4 sm:pt-8 pb-24 sm:pb-32 px-4 sm:px-6 max-w-4xl mx-auto w-full space-y-4 sm:space-y-8">
-    {/* Header */}
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-      className="bg-primary-container text-white p-5 sm:p-8 rounded-2xl sm:rounded-3xl flex items-center justify-between shadow-2xl overflow-hidden relative"
-    >
-      <div className="space-y-1 z-10">
-        <span className="text-on-primary-container text-xs sm:text-sm font-black uppercase tracking-widest opacity-80">AI Analysis Complete</span>
-        <h2 className="text-2xl sm:text-4xl font-black">Here is the Answer</h2>
-      </div>
-      <div className="z-10">
-        <Sparkles className="w-8 h-8 sm:w-12 sm:h-12 text-white" />
-      </div>
-      <div className="absolute top-0 right-0 w-40 h-40 sm:w-64 sm:h-64 bg-white/5 rounded-full -mr-10 -mt-10 sm:-mr-20 sm:-mt-20 blur-3xl" />
-    </motion.div>
-
-    {/* Question Card */}
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay: 0.1 }}
-      className="bg-white p-5 sm:p-8 rounded-2xl sm:rounded-3xl shadow-sm border border-black/5"
-    >
-      <div className="flex items-center gap-3 mb-3 sm:mb-4">
-        <div className="w-8 h-8 sm:w-10 sm:h-10 bg-primary/10 rounded-xl flex items-center justify-center">
-          <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
-        </div>
-        <p className="text-xs sm:text-sm font-black text-primary uppercase tracking-wider">Your Question</p>
-      </div>
-      <p className="text-lg sm:text-2xl font-bold text-on-surface">{question}</p>
-    </motion.div>
-
-    {/* AI Answer */}
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay: 0.2 }}
-      className="bg-gradient-to-br from-primary to-primary-container text-white p-5 sm:p-10 rounded-2xl sm:rounded-3xl shadow-2xl"
-    >
-      <div className="flex items-center gap-3 mb-4 sm:mb-6">
-        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/20 rounded-xl flex items-center justify-center">
-          <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-        </div>
-        <div>
-          <p className="text-xs sm:text-sm font-black uppercase tracking-widest opacity-80">AI Analysis</p>
-          <h3 className="text-2xl sm:text-3xl font-black">Expert Verdict</h3>
-        </div>
-      </div>
-      <div className="text-base sm:text-xl font-medium leading-relaxed whitespace-pre-wrap">
-        {result.analysisResult}
-      </div>
-    </motion.div>
-
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8">
-      {/* Extracted Ingredients / Nutrients */}
+}) => {
+  const { t, speechLang } = useLanguage();
+  return (
+    <div className="pt-4 sm:pt-8 pb-24 sm:pb-32 px-4 sm:px-6 max-w-4xl mx-auto w-full space-y-4 sm:space-y-8">
+      {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.3 }}
-        className="bg-white p-5 sm:p-8 rounded-2xl sm:rounded-3xl shadow-sm border border-black/5 flex flex-col h-full ring-1 ring-black/5"
+        transition={{ duration: 0.4 }}
+        className="bg-primary-container text-white p-5 sm:p-8 rounded-2xl sm:rounded-3xl flex items-center justify-between shadow-2xl overflow-hidden relative"
       >
-        <div className="flex justify-between items-start mb-4 sm:mb-8">
-          <div className="flex items-center gap-3 sm:gap-4">
-            <Zap className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
-            <h4 className="text-2xl sm:text-3xl font-black">Extracted Ingredients</h4>
-          </div>
+        <div className="space-y-1 z-10">
+          <span className="text-on-primary-container text-xs sm:text-sm font-black uppercase tracking-widest opacity-80">{t('results.aiAnalysisComplete')}</span>
+          <h2 className="text-2xl sm:text-4xl font-black">{t('results.hereIsAnswer')}</h2>
         </div>
-        <div className="text-base sm:text-lg font-medium leading-relaxed text-on-surface-variant whitespace-pre-wrap flex-grow">
-          {result.extractedText}
+        <div className="z-10">
+          <Sparkles className="w-8 h-8 sm:w-12 sm:h-12 text-white" />
+        </div>
+        <div className="absolute top-0 right-0 w-40 h-40 sm:w-64 sm:h-64 bg-white/5 rounded-full -mr-10 -mt-10 sm:-mr-20 sm:-mt-20 blur-3xl" />
+      </motion.div>
+
+      {/* Question Card */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.1 }}
+        className="bg-white p-5 sm:p-8 rounded-2xl sm:rounded-3xl shadow-sm border border-black/5"
+      >
+        <div className="flex items-center gap-3 mb-3 sm:mb-4">
+          <div className="w-8 h-8 sm:w-10 sm:h-10 bg-primary/10 rounded-xl flex items-center justify-center">
+            <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+          </div>
+          <p className="text-xs sm:text-sm font-black text-primary uppercase tracking-wider">{t('results.yourQuestion')}</p>
+        </div>
+        <p className="text-lg sm:text-2xl font-bold text-on-surface">{question}</p>
+      </motion.div>
+
+      {/* AI Answer */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.2 }}
+        className="bg-gradient-to-br from-primary to-primary-container text-white p-5 sm:p-10 rounded-2xl sm:rounded-3xl shadow-2xl"
+      >
+        <div className="flex items-center justify-between gap-3 mb-4 sm:mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/20 rounded-xl flex items-center justify-center">
+              <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+            </div>
+            <div>
+              <p className="text-xs sm:text-sm font-black uppercase tracking-widest opacity-80">{t('results.aiAnalysis')}</p>
+              <h3 className="text-2xl sm:text-3xl font-black">{t('results.expertVerdict')}</h3>
+            </div>
+          </div>
+          <SpeechButton text={result.analysisResult} speechLang={speechLang} ariaLabel={t('common.readAloud')} className="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0" />
+        </div>
+        <div className="text-base sm:text-xl font-medium leading-relaxed whitespace-pre-wrap">
+          {result.analysisResult}
         </div>
       </motion.div>
 
-      {/* Product Image */}
+      {/* Health Rating */}
+      {result.healthScore != null && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.25 }}
+          className="bg-white p-5 sm:p-8 rounded-2xl sm:rounded-3xl shadow-sm border border-primary/20 ring-2 ring-primary/10"
+        >
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <span className="text-3xl sm:text-4xl font-black text-primary">{result.healthScore}</span>
+              </div>
+              <div>
+                <p className="text-xs sm:text-sm font-black text-primary uppercase tracking-wider">{t('results.healthRating')}</p>
+                <h3 className="text-xl sm:text-2xl font-black text-on-surface">
+                  {result.healthScore >= 7 ? t('results.healthyChoice') : result.healthScore >= 4 ? t('results.okayModeration') : t('results.limitProduct')}
+                </h3>
+              </div>
+            </div>
+            {result.healthReason && (
+              <SpeechButton text={result.healthReason} speechLang={speechLang} ariaLabel={t('common.readAloud')} className="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0" />
+            )}
+          </div>
+          {result.healthReason && (
+            <p className="mt-4 text-base sm:text-lg font-medium text-on-surface-variant leading-relaxed">
+              {result.healthReason}
+            </p>
+          )}
+        </motion.div>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8">
+        {/* Extracted Ingredients / Nutrients */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.3 }}
+          className="bg-white p-5 sm:p-8 rounded-2xl sm:rounded-3xl shadow-sm border border-black/5 flex flex-col h-full ring-1 ring-black/5"
+        >
+          <div className="flex justify-between items-start mb-4 sm:mb-8 gap-3">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <Zap className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
+              <h4 className="text-2xl sm:text-3xl font-black">{t('results.extractedIngredients')}</h4>
+            </div>
+            <SpeechButton text={result.extractedText} speechLang={speechLang} ariaLabel={t('common.readAloud')} className="w-9 h-9 sm:w-10 sm:h-10 flex-shrink-0" />
+          </div>
+          <div className="text-base sm:text-lg font-medium leading-relaxed text-on-surface-variant whitespace-pre-wrap flex-grow">
+            {result.extractedText}
+          </div>
+        </motion.div>
+
+        {/* Product Image */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.4 }}
+          className="bg-white p-5 sm:p-8 rounded-2xl sm:rounded-3xl shadow-sm border border-black/5 flex flex-col h-full ring-1 ring-black/5"
+        >
+          <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-8">
+            <ShieldCheck className="w-6 h-6 sm:w-8 sm:h-8 text-tertiary" />
+            <h4 className="text-2xl sm:text-3xl font-black">{t('results.productImage')}</h4>
+          </div>
+          <div className="mt-auto">
+            <img
+              src={imagePath}
+              alt={t('common.scannedProductAlt')}
+              className="w-full h-48 sm:h-64 object-cover rounded-xl sm:rounded-2xl shadow-inner"
+            />
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Continue or scan another */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.4 }}
-        className="bg-white p-5 sm:p-8 rounded-2xl sm:rounded-3xl shadow-sm border border-black/5 flex flex-col h-full ring-1 ring-black/5"
+        transition={{ duration: 0.4, delay: 0.5 }}
+        className="text-center pt-4 sm:pt-8 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4"
       >
-        <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-8">
-          <ShieldCheck className="w-6 h-6 sm:w-8 sm:h-8 text-tertiary" />
-          <h4 className="text-2xl sm:text-3xl font-black">Product Image</h4>
-        </div>
-        <div className="mt-auto">
-          <img
-            src={imagePath}
-            alt="Scanned product"
-            className="w-full h-48 sm:h-64 object-cover rounded-xl sm:rounded-2xl shadow-inner"
-          />
-        </div>
+        <button
+          onClick={onAskAnother}
+          className="bg-white text-primary border-2 border-primary px-6 sm:px-10 py-3 sm:py-5 rounded-full text-base sm:text-xl font-bold hover:bg-primary/5 transition-all active:scale-95 shadow-lg inline-flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-center"
+        >
+          <MessageCircle className="w-5 h-5 sm:w-6 sm:h-6" />
+          {t('results.askAnother')}
+        </button>
+        <button
+          onClick={onScanAnother}
+          className="bg-primary text-white px-6 sm:px-10 py-3 sm:py-5 rounded-full text-base sm:text-xl font-bold hover:bg-primary-container transition-all active:scale-95 shadow-lg inline-flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-center"
+        >
+          <QrCode className="w-5 h-5 sm:w-6 sm:h-6" />
+          {t('results.scanAnother')}
+        </button>
       </motion.div>
     </div>
+  );
+};
 
-    {/* Continue or scan another */}
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay: 0.5 }}
-      className="text-center pt-4 sm:pt-8 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4"
-    >
-      <button
-        onClick={onAskAnother}
-        className="bg-white text-primary border-2 border-primary px-6 sm:px-10 py-3 sm:py-5 rounded-full text-base sm:text-xl font-bold hover:bg-primary/5 transition-all active:scale-95 shadow-lg inline-flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-center"
+const MAX_COMPARE_PRODUCTS = 50;
+
+interface CompareProduct {
+  id: string;
+  previewUrl: string;
+  imagePath: string;
+  name: string;
+  ingredients: string;
+  nutrition: string;
+  status: 'uploading' | 'extracting' | 'done' | 'error';
+  error?: string;
+}
+
+const CompareView = ({ onBack }: { onBack: () => void }) => {
+  const { t, speechLang, lang } = useLanguage();
+  const { user } = useAuth();
+  const [products, setProducts] = useState<CompareProduct[]>([]);
+  const [result, setResult] = useState<CompareResult | null>(null);
+  const [comparing, setComparing] = useState(false);
+  const [error, setError] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const readFileAsDataURL = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const addProduct = async (file: File) => {
+    const id = crypto.randomUUID();
+    const previewUrl = URL.createObjectURL(file);
+    const defaultName = file.name.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' ');
+
+    setProducts((prev) => [
+      ...prev,
+      {
+        id,
+        previewUrl,
+        imagePath: '',
+        name: defaultName,
+        ingredients: '',
+        nutrition: '',
+        status: 'uploading',
+      },
+    ]);
+
+    try {
+      const dataUrl = await readFileAsDataURL(file);
+      const uploadRes = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: user?.id || 'anonymous',
+          filename: file.name,
+          data: dataUrl,
+        }),
+      });
+      if (!uploadRes.ok) throw new Error(t('scanner.uploadFailed'));
+      const uploadData = await uploadRes.json();
+      const imagePath: string = uploadData.path;
+
+      setProducts((prev) =>
+        prev.map((p) => (p.id === id ? { ...p, imagePath, status: 'extracting' } : p))
+      );
+
+      const extractRes = await fetch('/api/extract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imagePath }),
+      });
+      if (!extractRes.ok) throw new Error(t('common.error'));
+      const extractData = await extractRes.json();
+
+      setProducts((prev) =>
+        prev.map((p) =>
+          p.id === id ? { ...p, ingredients: extractData.extractedText, status: 'done' } : p
+        )
+      );
+    } catch (err: any) {
+      setProducts((prev) =>
+        prev.map((p) =>
+          p.id === id ? { ...p, status: 'error', error: err.message || t('compare.failedProcess') } : p
+        )
+      );
+    }
+  };
+
+  const handleFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []) as File[];
+    if (files.length === 0) return;
+    const remaining = MAX_COMPARE_PRODUCTS - products.length;
+    if (remaining <= 0) {
+      setError(t('compare.limitError', { max: MAX_COMPARE_PRODUCTS }));
+      return;
+    }
+    setError('');
+    const toAdd = files.slice(0, remaining);
+    toAdd.forEach((file) => addProduct(file));
+    e.target.value = '';
+  };
+
+  const updateProduct = (id: string, field: keyof CompareProduct, value: string) => {
+    setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, [field]: value } : p)));
+  };
+
+  const removeProduct = (id: string) => {
+    setProducts((prev) => prev.filter((p) => p.id !== id));
+  };
+
+  const handleCompare = async () => {
+    const ready = products.filter((p) => p.status === 'done');
+    if (ready.length < 2) {
+      setError(t('compare.needTwo'));
+      return;
+    }
+
+    setComparing(true);
+    setError('');
+    setResult(null);
+
+    try {
+      const res = await fetch('/api/compare', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          products: ready.map((p) => ({ name: p.name, ingredients: p.ingredients, nutrition: p.nutrition })),
+          language: lang,
+        }),
+      });
+      if (!res.ok) throw new Error(`${t('common.error')} ${res.status}`);
+      const data = await res.json();
+      setResult(data);
+    } catch (err: any) {
+      setError(err.message || t('compare.compareFailed'));
+    } finally {
+      setComparing(false);
+    }
+  };
+
+  const winnerName =
+    result?.winner === 'tie'
+      ? t('compare.itsATie')
+      : result?.products[result.winner as number]?.name ?? '';
+
+  const fullResultText = result
+    ? `${t('compare.healthiestChoice')}: ${winnerName}. ${result.explanation}`
+    : '';
+
+  const statusBadge = (status: CompareProduct['status'], err?: string) => {
+    switch (status) {
+      case 'uploading':
+        return <span className="text-xs font-black uppercase tracking-wider text-primary">{t('compare.uploading')}</span>;
+      case 'extracting':
+        return <span className="text-xs font-black uppercase tracking-wider text-primary">{t('compare.readingLabel')}</span>;
+      case 'error':
+        return <span className="text-xs font-black uppercase tracking-wider text-red-600">{err || t('common.error')}</span>;
+      default:
+        return <span className="text-xs font-black uppercase tracking-wider text-green-600">{t('compare.ready')}</span>;
+    }
+  };
+
+  return (
+    <div className="pt-4 sm:pt-8 pb-24 sm:pb-32 px-4 sm:px-6 max-w-6xl mx-auto w-full min-h-[calc(100vh-80px)]">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="w-full space-y-6 sm:space-y-10"
       >
-        <MessageCircle className="w-5 h-5 sm:w-6 sm:h-6" />
-        Ask Another Question
-      </button>
-      <button
-        onClick={onScanAnother}
-        className="bg-primary text-white px-6 sm:px-10 py-3 sm:py-5 rounded-full text-base sm:text-xl font-bold hover:bg-primary-container transition-all active:scale-95 shadow-lg inline-flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-center"
-      >
-        <QrCode className="w-5 h-5 sm:w-6 sm:h-6" />
-        Scan Another Product
-      </button>
-    </motion.div>
-  </div>
-);
+        <button
+          onClick={onBack}
+          className="flex items-center gap-2 text-on-surface-variant font-bold hover:text-primary transition-colors"
+        >
+          <ArrowLeft className="w-5 h-5" />
+          {t('common.back')}
+        </button>
+
+        <section>
+          <h2 className="text-4xl sm:text-6xl font-black text-on-surface leading-none tracking-tighter mb-4">
+            {t('compare.title')}
+          </h2>
+          <p className="text-xl sm:text-2xl text-on-surface-variant max-w-3xl leading-tight font-medium">
+            {t('compare.description', { max: MAX_COMPARE_PRODUCTS })}
+          </p>
+        </section>
+
+        {/* Upload area */}
+        <div className="bg-white p-5 sm:p-8 rounded-3xl shadow-sm border border-black/5 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg sm:text-xl font-black text-on-surface">{t('compare.uploadPhotos')}</h3>
+              <p className="text-sm text-on-surface-variant font-medium">
+                {t('compare.productsCount', { count: products.length, max: MAX_COMPARE_PRODUCTS })}
+              </p>
+            </div>
+            {products.length >= MAX_COMPARE_PRODUCTS && (
+              <span className="text-xs font-black text-red-600 uppercase tracking-wider">{t('compare.limitReached')}</span>
+            )}
+          </div>
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handleFilesChange}
+            className="hidden"
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={products.length >= MAX_COMPARE_PRODUCTS}
+            className="w-full h-14 sm:h-20 rounded-2xl border-2 border-dashed border-primary/30 flex items-center justify-center gap-2 sm:gap-3 text-primary font-bold hover:bg-primary/5 transition-colors disabled:opacity-50 text-sm sm:text-base"
+          >
+            <Upload className="w-5 h-5 sm:w-6 sm:h-6" />
+            {t('compare.choosePhotos')}
+          </button>
+
+          {error && (
+            <div className="bg-red-50 text-red-700 px-4 py-3 rounded-xl text-sm font-bold flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0" />
+              {error}
+            </div>
+          )}
+        </div>
+
+        {/* Product cards */}
+        {products.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
+            {products.map((product) => (
+              <motion.div
+                key={product.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white p-4 sm:p-6 rounded-3xl shadow-sm border border-black/5 space-y-4"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden flex-shrink-0 bg-surface-container-low">
+                    <img src={product.previewUrl} alt={product.name} className="w-full h-full object-cover" />
+                    {product.status !== 'done' && (
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                        {product.status === 'error' ? (
+                          <X className="w-6 h-6 text-white" />
+                        ) : (
+                          <Loader2 className="w-6 h-6 text-white animate-spin" />
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-on-surface-variant font-bold uppercase tracking-wider mb-1">{statusBadge(product.status, product.error)}</p>
+                    <input
+                      type="text"
+                      value={product.name}
+                      onChange={(e) => updateProduct(product.id, 'name', e.target.value)}
+                      placeholder={t('compare.productNamePlaceholder')}
+                      className="w-full h-10 px-3 rounded-xl bg-surface-container-low text-on-surface font-bold text-sm placeholder:text-on-surface-variant/50 focus:ring-2 focus:ring-primary/20 outline-none"
+                    />
+                  </div>
+                  <button
+                    onClick={() => removeProduct(product.id)}
+                    className="w-8 h-8 rounded-full bg-surface-container-low text-on-surface-variant hover:bg-red-50 hover:text-red-600 flex items-center justify-center transition-colors"
+                    aria-label={t('compare.removeProduct')}
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <textarea
+                  value={product.ingredients}
+                  onChange={(e) => updateProduct(product.id, 'ingredients', e.target.value)}
+                  placeholder={t('compare.ingredientsPlaceholder')}
+                  rows={3}
+                  disabled={product.status !== 'done' && product.status !== 'error'}
+                  className="w-full p-3 rounded-2xl bg-surface-container-low text-on-surface text-sm font-medium placeholder:text-on-surface-variant/50 focus:ring-2 focus:ring-primary/20 outline-none resize-none disabled:opacity-60"
+                />
+                <textarea
+                  value={product.nutrition}
+                  onChange={(e) => updateProduct(product.id, 'nutrition', e.target.value)}
+                  placeholder={t('compare.nutritionPlaceholder')}
+                  rows={2}
+                  className="w-full p-3 rounded-2xl bg-surface-container-low text-on-surface text-sm font-medium placeholder:text-on-surface-variant/50 focus:ring-2 focus:ring-primary/20 outline-none resize-none"
+                />
+              </motion.div>
+            ))}
+          </div>
+        )}
+
+        {/* Compare button */}
+        {products.length > 0 && (
+          <button
+            onClick={handleCompare}
+            disabled={comparing || products.filter((p) => p.status === 'done').length < 2}
+            className="w-full h-14 sm:h-20 rounded-2xl bg-primary text-white text-lg sm:text-2xl font-bold flex items-center justify-center gap-3 shadow-xl active:scale-95 transition-transform disabled:opacity-70"
+          >
+            {comparing ? <Loader2 className="w-6 h-6 animate-spin" /> : <Scale className="w-6 h-6" />}
+            {comparing ? t('compare.comparing') : t('compare.analyzeCompare')}
+          </button>
+        )}
+
+        {/* Results */}
+        {result && (
+          <div className="space-y-6 sm:space-y-8">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-gradient-to-br from-primary to-primary-container text-white p-6 sm:p-10 rounded-3xl shadow-2xl"
+            >
+              <div className="flex items-start justify-between gap-4 mb-4">
+                <div>
+                  <p className="text-xs sm:text-sm font-black uppercase tracking-widest opacity-80">{t('compare.healthiestChoice')}</p>
+                  <h3 className="text-3xl sm:text-5xl font-black">{winnerName}</h3>
+                </div>
+                <SpeechButton text={fullResultText} speechLang={speechLang} ariaLabel={t('common.readAloud')} className="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0" />
+              </div>
+              <p className="text-base sm:text-xl font-medium leading-relaxed whitespace-pre-wrap">
+                {result.explanation}
+              </p>
+            </motion.div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
+              {result.products.map((product, idx) => {
+                const isWinner = result.winner === idx;
+                return (
+                  <motion.div
+                    key={idx}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.05 * idx }}
+                    className={cn(
+                      'bg-white p-5 sm:p-6 rounded-3xl shadow-sm border space-y-4',
+                      isWinner ? 'border-primary ring-2 ring-primary/20' : 'border-black/5'
+                    )}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <h4 className="text-lg sm:text-xl font-black text-on-surface truncate">{product.name}</h4>
+                      {isWinner && <span className="px-3 py-1 bg-primary text-white text-xs font-black uppercase tracking-wider rounded-full flex-shrink-0">{t('compare.winner')}</span>}
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <div className="text-4xl sm:text-5xl font-black text-primary">{product.healthScore}</div>
+                      <div className="text-sm font-bold text-on-surface-variant uppercase tracking-wider">/ 10<br />{t('compare.healthScore')}</div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div>
+                        <p className="text-xs font-black uppercase tracking-wider text-green-700 mb-1">{t('compare.pros')}</p>
+                        <ul className="list-disc list-inside text-sm text-on-surface font-medium space-y-1">
+                          {product.pros.map((pro, i) => <li key={i}>{pro}</li>)}
+                        </ul>
+                      </div>
+                      <div>
+                        <p className="text-xs font-black uppercase tracking-wider text-red-700 mb-1">{t('compare.cons')}</p>
+                        <ul className="list-disc list-inside text-sm text-on-surface font-medium space-y-1">
+                          {product.cons.map((con, i) => <li key={i}>{con}</li>)}
+                        </ul>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </motion.div>
+    </div>
+  );
+};
 
 const HistoryView = ({
   onSelect,
 }: {
   onSelect: (record: HistoryRecord) => void;
 }) => {
+  const { t, lang } = useLanguage();
   const { user } = useAuth();
   const [records, setRecords] = useState<HistoryRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -693,15 +1286,15 @@ const HistoryView = ({
     setError('');
     try {
       const res = await fetch(`/api/history/${encodeURIComponent(user.id)}`);
-      if (!res.ok) throw new Error('Failed to load history');
+      if (!res.ok) throw new Error(t('history.couldNotLoad'));
       const data = await res.json();
       setRecords(data);
     } catch (e: any) {
-      setError(e.message || 'Failed to load history');
+      setError(e.message || t('history.couldNotLoad'));
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, t]);
 
   useEffect(() => {
     loadHistory();
@@ -709,7 +1302,7 @@ const HistoryView = ({
 
   const formatDate = (timestamp: string) => {
     try {
-      return new Date(timestamp).toLocaleString();
+      return new Date(timestamp).toLocaleString(lang);
     } catch {
       return timestamp;
     }
@@ -719,7 +1312,7 @@ const HistoryView = ({
     return (
       <div className="flex flex-col items-center justify-center h-[70vh] px-6 sm:px-10 text-center">
         <Loader2 className="w-10 h-10 sm:w-12 sm:h-12 text-primary animate-spin mb-4" />
-        <p className="text-lg sm:text-xl font-bold text-on-surface-variant">Loading your history...</p>
+        <p className="text-lg sm:text-xl font-bold text-on-surface-variant">{t('history.loading')}</p>
       </div>
     );
   }
@@ -728,14 +1321,14 @@ const HistoryView = ({
     return (
       <div className="flex flex-col items-center justify-center h-[70vh] px-6 sm:px-10 text-center">
         <HistoryIcon className="w-16 h-16 sm:w-24 sm:h-24 text-red-200 mb-6 sm:mb-8" />
-        <h2 className="text-3xl sm:text-4xl font-black mb-3 sm:mb-4">Could Not Load History</h2>
+        <h2 className="text-3xl sm:text-4xl font-black mb-3 sm:mb-4">{t('history.couldNotLoad')}</h2>
         <p className="text-base sm:text-xl text-on-surface-variant mb-5 sm:mb-6">{error}</p>
         <button
           onClick={loadHistory}
           className="bg-primary text-white px-6 sm:px-8 py-2 sm:py-3 rounded-full font-bold flex items-center gap-2 active:scale-95 transition-transform"
         >
           <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5" />
-          Try Again
+          {t('history.tryAgain')}
         </button>
       </div>
     );
@@ -745,8 +1338,8 @@ const HistoryView = ({
     return (
       <div className="flex flex-col items-center justify-center h-[70vh] px-6 sm:px-10 text-center">
         <HistoryIcon className="w-16 h-16 sm:w-24 sm:h-24 text-primary/20 mb-6 sm:mb-8" />
-        <h2 className="text-3xl sm:text-4xl font-black mb-3 sm:mb-4">No History Yet</h2>
-        <p className="text-base sm:text-xl text-on-surface-variant">Products you scan will appear here.</p>
+        <h2 className="text-3xl sm:text-4xl font-black mb-3 sm:mb-4">{t('history.noHistory')}</h2>
+        <p className="text-base sm:text-xl text-on-surface-variant">{t('history.noHistoryDescription')}</p>
       </div>
     );
   }
@@ -754,9 +1347,9 @@ const HistoryView = ({
   return (
     <div className="pt-4 sm:pt-8 pb-24 sm:pb-32 px-4 sm:px-6 max-w-4xl mx-auto w-full space-y-4 sm:space-y-6">
       <div className="text-center mb-5 sm:mb-8">
-        <h2 className="text-3xl sm:text-5xl font-black leading-tight text-on-surface mb-2 sm:mb-4">Your Scan History</h2>
+        <h2 className="text-3xl sm:text-5xl font-black leading-tight text-on-surface mb-2 sm:mb-4">{t('history.title')}</h2>
         <p className="text-base sm:text-xl font-medium text-on-surface-variant px-2 sm:px-0">
-          Review your past ingredient-list checks.
+          {t('history.description')}
         </p>
       </div>
 
@@ -777,7 +1370,7 @@ const HistoryView = ({
               >
                 <img
                   src={record.imagePath}
-                  alt="Scanned product"
+                  alt={t('common.scannedProductAlt')}
                   className="w-full h-full object-cover"
                 />
               </button>
@@ -814,11 +1407,11 @@ const HistoryView = ({
                 >
                   <div className="px-4 sm:px-6 pb-4 sm:pb-6 space-y-3 sm:space-y-4">
                     <div className="bg-primary/5 rounded-xl sm:rounded-2xl p-4 sm:p-5">
-                      <p className="text-xs sm:text-sm font-black text-primary uppercase tracking-wider mb-2">AI Answer</p>
+                      <p className="text-xs sm:text-sm font-black text-primary uppercase tracking-wider mb-2">{t('history.aiAnswer')}</p>
                       <p className="text-base sm:text-lg font-medium text-on-surface whitespace-pre-wrap">{record.analysisResult}</p>
                     </div>
                     <div className="bg-surface-container-low rounded-xl sm:rounded-2xl p-4 sm:p-5">
-                      <p className="text-xs sm:text-sm font-black text-on-surface-variant uppercase tracking-wider mb-2">Extracted Ingredients</p>
+                      <p className="text-xs sm:text-sm font-black text-on-surface-variant uppercase tracking-wider mb-2">{t('history.extractedIngredients')}</p>
                       <p className="text-sm sm:text-base font-medium text-on-surface-variant whitespace-pre-wrap">{record.extractedText}</p>
                     </div>
                   </div>
@@ -832,115 +1425,266 @@ const HistoryView = ({
   );
 };
 
-const LearnView = () => (
-  <div className="pt-4 sm:pt-8 pb-24 sm:pb-32 px-4 sm:px-6 max-w-5xl mx-auto w-full space-y-8 sm:space-y-12">
-    <div className="flex items-center gap-3 sm:gap-6 p-4 sm:p-8 bg-surface-container-low rounded-2xl sm:rounded-3xl border-l-[8px] sm:border-l-[12px] border-primary animate-pulse">
-      <Mic className="w-7 h-7 sm:w-10 sm:h-10 text-primary flex-shrink-0" />
-      <p className="text-base sm:text-2xl font-bold text-primary italic leading-tight">Reading this guide aloud for you...</p>
-    </div>
+const LearnView = ({ onFinish }: { onFinish: () => void }) => {
+  const { t, speechLang, facts, lang } = useLanguage();
+  const [speakingId, setSpeakingId] = useState<string | null>(null);
+  const [visibleFacts, setVisibleFacts] = useState<{ id: string; title: string; color: string; text: string; iconColor: string }[]>([]);
+  const [question, setQuestion] = useState('');
+  const [answer, setAnswer] = useState('');
+  const [isAsking, setIsAsking] = useState(false);
+  const [askError, setAskError] = useState('');
 
-    <section>
-      <h2 className="text-4xl sm:text-6xl md:text-8xl font-black text-on-surface leading-none tracking-tighter mb-4 sm:mb-6">
-        How to spot <br className="hidden sm:block"/><span className="text-primary italic font-serif">a fake.</span>
-      </h2>
-      <p className="text-xl sm:text-3xl text-on-surface-variant max-w-2xl leading-tight font-medium">
-        Stay safe by knowing the signs of a voice scam. We've made it simple to hear and learn.
-      </p>
-    </section>
+  const stopSpeaking = useCallback(() => {
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+    setSpeakingId(null);
+  }, []);
 
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8">
-      {[
-        { 
-          id: '01', 
-          title: 'Too Good to be True', 
-          color: 'bg-surface-container-high', 
-          text: 'If someone offers you free money or prizes over the phone, it is almost always a scam. Scammers use excitement to stop you from thinking clearly.',
-          iconColor: 'bg-primary'
-        },
-        { 
-          id: '02', 
-          title: 'Hidden Fees', 
-          color: 'bg-secondary-fixed', 
-          text: 'Requests for "processing fees" or "shipping costs" before you get your prize are a huge red flag. Legitimate companies don\'t ask for payment like this.',
-          iconColor: 'bg-secondary'
-        },
-        { 
-          id: '03', 
-          title: 'Urgent Tone', 
-          color: 'bg-primary-fixed', 
-          text: 'Scammers create a "crisis" to make you act fast. "Your bank account is locked" or "You owe taxes." Take a deep breath. Real companies give you time.',
-          fullWidth: true,
-          isUrgent: true,
-          iconColor: 'bg-primary'
-        },
-        { 
-          id: '04', 
-          title: 'Unusual Payment', 
-          color: 'bg-surface-container-highest', 
-          text: 'Be wary if someone asks for payment via Gift Cards, Wire Transfers, or Cryptocurrency. These are nearly impossible to trace or get back.',
-          iconColor: 'bg-primary'
-        },
-        { 
-          id: '05', 
-          title: 'Impersonation', 
-          color: 'bg-white border-2 border-primary/5', 
-          text: 'They might sound like your grandson or a police officer. AI can mimic voices. Always hang up and call the person back on their known number.',
-          iconColor: 'bg-primary-container'
-        }
-      ].map((card) => (
-        <div 
-          key={card.id} 
-          className={cn(
-            "group relative overflow-hidden rounded-2xl sm:rounded-3xl p-5 sm:p-10 flex flex-col justify-between min-h-[280px] sm:min-h-[450px] transition-all hover:shadow-2xl hover:-translate-y-2",
-            card.color,
-            card.fullWidth && "md:col-span-2 md:flex-row md:items-center gap-12"
-          )}
+  const handleAsk = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!question.trim()) return;
+
+    setIsAsking(true);
+    setAskError('');
+    setAnswer('');
+
+    try {
+      const res = await fetch('/api/learn', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: question.trim(), language: lang }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`${t('common.error')} ${res.status}`);
+      }
+
+      const data = await res.json();
+      setAnswer(data.answer);
+    } catch (err: any) {
+      setAskError(err.message || t('learn.couldNotAnswer'));
+    } finally {
+      setIsAsking(false);
+    }
+  };
+
+  const speakCard = useCallback((card: { id: string; title: string; text: string }) => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) {
+      alert(t('learn.noSpeechSupport'));
+      return;
+    }
+
+    if (speakingId === card.id) {
+      stopSpeaking();
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(`${card.title}. ${card.text}`);
+    utterance.rate = 0.95;
+    utterance.pitch = 1;
+    utterance.lang = speechLang;
+    utterance.onend = () => setSpeakingId(null);
+    utterance.onerror = () => setSpeakingId(null);
+
+    window.speechSynthesis.speak(utterance);
+    setSpeakingId(card.id);
+  }, [speakingId, stopSpeaking, speechLang, t]);
+
+  useEffect(() => {
+    return () => {
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
+
+  const [shownIds, setShownIds] = useState<string[]>([]);
+
+  const pickFacts = useCallback((pool: typeof facts, count: number) => {
+    const shuffled = [...pool].sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, count);
+  }, []);
+
+  useEffect(() => {
+    if (visibleFacts.length === 0 && facts.length >= 2) {
+      const first = pickFacts(facts, 2);
+      setVisibleFacts(first);
+      setShownIds(first.map((f) => f.id));
+    }
+  }, [pickFacts, visibleFacts.length, facts]);
+
+  const refreshFacts = () => {
+    stopSpeaking();
+    const currentIds = visibleFacts.map((f) => f.id);
+    const alreadySeen = [...shownIds, ...currentIds];
+    let pool = facts.filter((f) => !alreadySeen.includes(f.id));
+
+    if (pool.length < 2) {
+      // All facts have been shown. Reset history but avoid repeating the current pair.
+      pool = facts.filter((f) => !currentIds.includes(f.id));
+      setShownIds([...currentIds]);
+    } else {
+      setShownIds((prev) => [...prev, ...currentIds]);
+    }
+
+    const next = pickFacts(pool, 2);
+    setVisibleFacts(next);
+  };
+
+  const isSpeaking = speakingId !== null;
+
+  return (
+    <div className="pt-4 sm:pt-8 pb-24 sm:pb-32 px-4 sm:px-6 max-w-5xl mx-auto w-full space-y-8 sm:space-y-12">
+      <div className={cn(
+        "flex items-center gap-3 sm:gap-6 p-4 sm:p-8 bg-surface-container-low rounded-2xl sm:rounded-3xl border-l-[8px] sm:border-l-[12px] border-primary",
+        isSpeaking && "animate-pulse"
+      )}>
+        <Mic className="w-7 h-7 sm:w-10 sm:h-10 text-primary flex-shrink-0" />
+        <p className="text-base sm:text-2xl font-bold text-primary italic leading-tight">
+          {isSpeaking ? t('learn.readingAloud') : t('learn.tapPlay')}
+        </p>
+      </div>
+
+      <section className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+        <div>
+          <h2 className="text-4xl sm:text-6xl md:text-8xl font-black text-on-surface leading-none tracking-tighter mb-4 sm:mb-6">
+            {t('learn.title')}
+          </h2>
+          <p className="text-xl sm:text-3xl text-on-surface-variant max-w-2xl leading-tight font-medium">
+            {t('learn.description')}
+          </p>
+        </div>
+        <button
+          onClick={refreshFacts}
+          className="self-start sm:self-auto flex items-center gap-2 px-4 sm:px-6 py-2 sm:py-3 rounded-full bg-primary text-white font-bold shadow-lg active:scale-95 transition-transform hover:shadow-primary/40"
         >
-          <div className={cn("absolute top-0 right-0 p-4 sm:p-8", card.fullWidth && "relative md:order-last p-0")}>
-            <div className={cn(
-              "w-14 h-14 sm:w-24 sm:h-24 rounded-full flex items-center justify-center shadow-2xl active:scale-90 transition-transform cursor-pointer",
-              card.isUrgent ? "bg-white" : card.iconColor
-            )}>
-              {card.isUrgent ? <Pause className="w-7 h-7 sm:w-12 sm:h-12 text-primary" /> : <Play className="w-7 h-7 sm:w-12 sm:h-12 text-white" />}
+          <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5" />
+          <span className="text-sm sm:text-base">{t('learn.newFacts')}</span>
+        </button>
+      </section>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8">
+        {visibleFacts.map((card) => {
+          const active = speakingId === card.id;
+          return (
+            <div
+              key={card.id}
+              className={cn(
+                "group relative overflow-hidden rounded-2xl sm:rounded-3xl p-5 sm:p-10 flex flex-col justify-between min-h-[280px] sm:min-h-[450px] transition-all hover:shadow-2xl hover:-translate-y-2",
+                card.color
+              )}
+            >
+              <div className="absolute top-0 right-0 p-4 sm:p-8">
+                <button
+                  onClick={() => speakCard(card)}
+                  className={cn(
+                    "w-14 h-14 sm:w-24 sm:h-24 rounded-full flex items-center justify-center shadow-2xl active:scale-90 transition-transform cursor-pointer",
+                    active ? "bg-white" : card.iconColor
+                  )}
+                  aria-label={active ? t('learn.stopReading') : t('learn.readAloud')}
+                >
+                  {active ? <Pause className="w-7 h-7 sm:w-12 sm:h-12 text-primary" /> : <Play className="w-7 h-7 sm:w-12 sm:h-12 text-white" />}
+                </button>
+              </div>
+              <div className="flex-1">
+                <span className="inline-block px-3 sm:px-5 py-1 sm:py-1.5 bg-primary/10 text-primary font-black rounded-full mb-4 sm:mb-8 uppercase tracking-widest text-xs sm:text-sm">{t('learn.factPrefix')} {card.id}</span>
+                <h3 className={cn("text-3xl sm:text-5xl font-black mb-3 sm:mb-6 leading-none tracking-tighter", active ? "text-primary" : "text-on-surface")}>
+                  {card.title}
+                </h3>
+                <p className={cn("text-base sm:text-2xl font-medium leading-tight", active ? "text-primary/70" : "text-on-surface-variant")}>
+                  {card.text}
+                </p>
+                <div className="flex items-center gap-2 sm:gap-3 mt-6 sm:mt-10">
+                  <span className={cn("flex h-3 w-3 sm:h-4 sm:w-4 rounded-full", active ? "bg-primary animate-pulse" : "bg-tertiary")} />
+                  <span className={cn("font-black uppercase tracking-[0.2em] text-[10px] sm:text-xs", active ? "text-primary" : "text-tertiary")}>
+                    {active ? t('learn.playingAudio') : t('learn.readyToPlay')}
+                  </span>
+                </div>
+              </div>
             </div>
-          </div>
-          <div className="flex-1">
-            <span className="inline-block px-3 sm:px-5 py-1 sm:py-1.5 bg-primary/10 text-primary font-black rounded-full mb-4 sm:mb-8 uppercase tracking-widest text-xs sm:text-sm">Signal {card.id}</span>
-            <h3 className={cn("text-3xl sm:text-5xl font-black mb-3 sm:mb-6 leading-none tracking-tighter", card.isUrgent ? "text-primary" : "text-on-surface")}>
-              {card.title}
-            </h3>
-            <p className={cn("text-base sm:text-2xl font-medium leading-tight", card.isUrgent ? "text-primary/70" : "text-on-surface-variant")}>
-              {card.text}
+          );
+        })}
+      </div>
+
+      <section className="bg-white p-6 sm:p-10 rounded-3xl shadow-sm border border-black/5 space-y-4">
+        <div className="flex items-center gap-3">
+          <Sparkles className="w-6 h-6 text-primary" />
+          <div>
+            <h3 className="text-xl sm:text-2xl font-black text-on-surface">{t('learn.askAI')}</h3>
+            <p className="text-sm sm:text-base text-on-surface-variant font-medium">
+              {t('learn.askAIDescription')}
             </p>
-            <div className="flex items-center gap-2 sm:gap-3 mt-6 sm:mt-10">
-              <span className={cn("flex h-3 w-3 sm:h-4 sm:w-4 rounded-full", card.isUrgent ? "bg-primary animate-pulse" : "bg-tertiary")} />
-              <span className={cn("font-black uppercase tracking-[0.2em] text-[10px] sm:text-xs", card.isUrgent ? "text-primary" : "text-tertiary")}>
-                {card.isUrgent ? "Voice analysis active" : "Ready to play"}
-              </span>
-            </div>
           </div>
         </div>
-      ))}
-    </div>
 
-    <section className="text-center pb-8 sm:pb-12">
-      <div className="inline-block p-8 sm:p-16 bg-surface-container-high rounded-[2rem] sm:rounded-[4rem] max-w-4xl shadow-2xl border border-white/50">
-        <ShieldCheck className="w-12 h-12 sm:w-20 sm:h-20 text-tertiary mx-auto mb-4 sm:mb-8" />
-        <h4 className="text-3xl sm:text-5xl font-black mb-4 sm:mb-6 tracking-tighter">You are doing great.</h4>
-        <p className="text-lg sm:text-2xl font-medium text-on-surface-variant mb-6 sm:mb-12 leading-tight">
-          Learning these simple rules makes you a harder target for scammers. Knowledge is your best shield.
-        </p>
-        <button className="bg-primary text-white text-lg sm:text-2xl font-black py-4 sm:py-8 px-8 sm:px-16 rounded-full shadow-2xl active:scale-95 transition-transform hover:shadow-primary/40">
-          Finish Guide
-        </button>
-      </div>
-    </section>
-  </div>
-);
+        <form onSubmit={handleAsk} className="flex flex-col sm:flex-row gap-3">
+          <input
+            type="text"
+            value={question}
+            onChange={(e) => setQuestion(e.target.value)}
+            placeholder={t('learn.placeholder')}
+            className="flex-1 h-12 sm:h-14 px-4 sm:px-6 rounded-2xl bg-surface-container-low text-on-surface font-bold placeholder:text-on-surface-variant/50 focus:ring-4 focus:ring-primary/20 outline-none"
+          />
+          <button
+            type="submit"
+            disabled={isAsking || !question.trim()}
+            className="h-12 sm:h-14 px-5 sm:px-6 rounded-2xl bg-primary text-white font-bold flex items-center justify-center gap-2 disabled:opacity-60 active:scale-95 transition-transform"
+          >
+            {isAsking ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+            <span>{isAsking ? t('learn.thinking') : t('learn.ask')}</span>
+          </button>
+        </form>
+
+        {askError && (
+          <div className="bg-red-50 text-red-700 px-4 py-3 rounded-xl text-sm font-bold flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0" />
+            {askError}
+          </div>
+        )}
+
+        {answer && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-primary/5 p-4 sm:p-6 rounded-2xl border border-primary/10"
+          >
+            <div className="flex items-start justify-between gap-3 mb-2">
+              <p className="text-xs sm:text-sm font-black text-primary uppercase tracking-wider">{t('learn.aiAnswer')}</p>
+              <SpeechButton text={answer} speechLang={speechLang} ariaLabel={t('common.readAloud')} className="w-8 h-8 sm:w-9 sm:h-9" />
+            </div>
+            <p className="text-on-surface font-medium leading-relaxed whitespace-pre-wrap">{answer}</p>
+          </motion.div>
+        )}
+      </section>
+
+      <section className="text-center pb-8 sm:pb-12">
+        <div className="inline-block p-8 sm:p-16 bg-surface-container-high rounded-[2rem] sm:rounded-[4rem] max-w-4xl shadow-2xl border border-white/50">
+          <ShieldCheck className="w-12 h-12 sm:w-20 sm:h-20 text-tertiary mx-auto mb-4 sm:mb-8" />
+          <h4 className="text-3xl sm:text-5xl font-black mb-4 sm:mb-6 tracking-tighter">{t('learn.doingGreat')}</h4>
+          <p className="text-lg sm:text-2xl font-medium text-on-surface-variant mb-6 sm:mb-12 leading-tight">
+            {t('learn.doingGreatDescription')}
+          </p>
+          <button
+            onClick={() => {
+              stopSpeaking();
+              onFinish();
+            }}
+            className="bg-primary text-white text-lg sm:text-2xl font-black py-4 sm:py-8 px-8 sm:px-16 rounded-full shadow-2xl active:scale-95 transition-transform hover:shadow-primary/40"
+          >
+            {t('learn.finishGuide')}
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+};
 
 // --- Main App ---
 
 export default function App() {
+  const { t, lang } = useLanguage();
   const [currentScreen, setCurrentScreen] = useState<Screen>('check');
   const [audioOn, setAudioOn] = useState(true);
   const [scanImagePath, setScanImagePath] = useState<string | null>(null);
@@ -969,22 +1713,25 @@ export default function App() {
           userId: user.id,
           imagePath: scanImagePath,
           question,
+          language: lang,
         }),
       });
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || 'Analysis failed');
+        throw new Error(data.error || t('common.error'));
       }
 
       setAnalysisResult({
         extractedText: data.extractedText,
         analysisResult: data.analysisResult,
         savedPath: data.savedPath,
+        healthScore: data.healthScore ?? null,
+        healthReason: data.healthReason ?? '',
       });
       setCurrentScreen('results');
     } catch (err: any) {
-      alert(err.message || 'Analysis failed. Please try again.');
+      alert(err.message || t('common.error'));
     } finally {
       setIsAnalyzing(false);
     }
@@ -1010,6 +1757,8 @@ export default function App() {
       extractedText: record.extractedText,
       analysisResult: record.analysisResult,
       savedPath: record.savedPath,
+      healthScore: record.healthScore ?? null,
+      healthReason: record.healthReason ?? '',
     });
     setCurrentScreen('results');
   };
@@ -1039,7 +1788,8 @@ export default function App() {
         ) : (
           <ScannerView onScan={handleScan} />
         );
-      case 'learn': return <LearnView />;
+      case 'learn': return <LearnView onFinish={() => setCurrentScreen('check')} />;
+      case 'compare': return <CompareView onBack={() => setCurrentScreen('check')} />;
       case 'history': return <HistoryView onSelect={handleHistorySelect} />;
       case 'profile': return <ProfileScreen onBack={() => setCurrentScreen('check')} />;
       default: return <ScannerView onScan={handleScan} />;
@@ -1076,7 +1826,7 @@ export default function App() {
       <nav className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-end px-2 sm:px-4 pb-4 sm:pb-8 pt-2 sm:pt-4 bg-white/90 backdrop-blur-xl border-t border-primary/10 rounded-t-3xl sm:rounded-t-[48px] shadow-[0_-10px_20px_rgba(0,0,0,0.05)] sm:shadow-[0_-20px_40px_rgba(0,0,0,0.05)]">
         <NavItem 
           icon={CheckCircle} 
-          label="Check" 
+          label={t('nav.check')} 
           active={currentScreen === 'check' || currentScreen === 'question' || currentScreen === 'results'} 
           onClick={() => {
             handleScanAnother();
@@ -1085,15 +1835,21 @@ export default function App() {
         />
         <NavItem 
           icon={HistoryIcon} 
-          label="History" 
+          label={t('nav.history')} 
           active={currentScreen === 'history'} 
           onClick={() => setCurrentScreen('history')} 
         />
         <NavItem 
           icon={GraduationCap} 
-          label="Learn" 
+          label={t('nav.learn')} 
           active={currentScreen === 'learn'} 
           onClick={() => setCurrentScreen('learn')} 
+        />
+        <NavItem 
+          icon={Scale} 
+          label={t('nav.compare')} 
+          active={currentScreen === 'compare'} 
+          onClick={() => setCurrentScreen('compare')} 
         />
       </nav>
     </div>
