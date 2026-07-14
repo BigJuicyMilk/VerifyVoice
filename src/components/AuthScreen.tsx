@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { AudioLines, Eye, EyeOff, ArrowRight, User, Mail, Lock, X } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth, type SocialProvider } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 
 type AuthMode = 'login' | 'register';
 
@@ -44,6 +45,7 @@ function SocialLoginModal({
   onClose: () => void;
   onSubmit: (name: string, email: string) => void;
 }) {
+  const { t } = useLanguage();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
 
@@ -95,22 +97,22 @@ function SocialLoginModal({
             {provider === 'wechat' && <WechatLogo />}
             {provider === 'x' && <XLogo />}
           </div>
-          <h3 className="text-xl sm:text-2xl font-black text-on-surface">Sign in with {style.brand}</h3>
+          <h3 className="text-xl sm:text-2xl font-black text-on-surface">{t('common.continueWith', { brand: style.brand })}</h3>
           <p className="text-on-surface-variant text-sm font-medium mt-1 text-center">
-            Enter your details to connect your {style.brand} account.
+            {t('social.modalDescription', { brand: style.brand })}
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <label className="text-xs font-bold text-on-surface uppercase tracking-wider">Name</label>
+            <label className="text-xs font-bold text-on-surface uppercase tracking-wider">{t('common.name')}</label>
             <div className="relative">
               <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary/60" />
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Your name"
+                placeholder={t('auth.namePlaceholder')}
                 className="w-full h-12 sm:h-14 bg-surface-container-low rounded-xl sm:rounded-2xl pl-11 sm:pl-12 pr-4 text-base sm:text-lg font-medium text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-4 focus:ring-primary/15 transition-all"
                 required
               />
@@ -118,14 +120,14 @@ function SocialLoginModal({
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-bold text-on-surface uppercase tracking-wider">Email</label>
+            <label className="text-xs font-bold text-on-surface uppercase tracking-wider">{t('common.email')}</label>
             <div className="relative">
               <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary/60" />
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
+                placeholder={t('auth.emailPlaceholder')}
                 className="w-full h-12 sm:h-14 bg-surface-container-low rounded-xl sm:rounded-2xl pl-11 sm:pl-12 pr-4 text-base sm:text-lg font-medium text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-4 focus:ring-primary/15 transition-all"
                 required
               />
@@ -141,7 +143,7 @@ function SocialLoginModal({
               provider === 'x' && 'bg-black text-white shadow-black/25'
             )}
           >
-            Continue with {style.brand}
+            {t('common.continueWith', { brand: style.brand })}
           </button>
         </form>
       </motion.div>
@@ -152,6 +154,7 @@ function SocialLoginModal({
 // --- Main Auth Screen ---
 
 export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
+  const { t } = useLanguage();
   const [mode, setMode] = useState<AuthMode>('login');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -174,12 +177,12 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
         result = await login(email, password);
       } else {
         if (!name.trim()) {
-          setError('Please enter your name.');
+          setError(t('auth.nameRequired'));
           setIsSubmitting(false);
           return;
         }
         if (password.length < 6) {
-          setError('Password must be at least 6 characters.');
+          setError(t('auth.passwordMin'));
           setIsSubmitting(false);
           return;
         }
@@ -187,7 +190,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
       }
 
       if (!result.success) {
-        setError(result.error || 'Something went wrong.');
+        setError(result.errorKey ? t(result.errorKey) : (result.error || t('auth.somethingWrong')));
       } else {
         onAuthSuccess?.();
       }
@@ -209,7 +212,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
     setTimeout(async () => {
       const result = await socialLogin(socialProvider, socialName, socialEmail);
       if (!result.success) {
-        setError(result.error || 'Social login failed.');
+        setError(result.errorKey ? t(result.errorKey) : (result.error || t('auth.socialLoginFailed')));
       } else {
         setSocialProvider(null);
         onAuthSuccess?.();
@@ -241,9 +244,9 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
           <div className="w-16 h-16 sm:w-20 sm:h-20 bg-primary rounded-2xl sm:rounded-3xl flex items-center justify-center shadow-xl shadow-primary/20 mb-4 sm:mb-6">
             <AudioLines className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
           </div>
-          <h1 className="text-3xl sm:text-4xl font-black tracking-tighter text-on-surface">Verify Voice</h1>
+          <h1 className="text-3xl sm:text-4xl font-black tracking-tighter text-on-surface">{t('common.appName')}</h1>
           <p className="text-on-surface-variant mt-2 font-medium text-base sm:text-lg">
-            {mode === 'login' ? 'Welcome back' : 'Create your account'}
+            {mode === 'login' ? t('common.welcomeBack') : t('common.createAccount')}
           </p>
         </div>
 
@@ -261,14 +264,14 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
             >
               {mode === 'register' && (
                 <div className="space-y-2">
-                  <label className="text-sm font-bold text-on-surface uppercase tracking-wider">Name</label>
+                  <label className="text-sm font-bold text-on-surface uppercase tracking-wider">{t('common.name')}</label>
                   <div className="relative">
                     <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary/60" />
                     <input
                       type="text"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      placeholder="Your full name"
+                      placeholder={t('auth.fullNamePlaceholder')}
                       className="w-full h-12 sm:h-14 bg-surface-container-low rounded-xl sm:rounded-2xl pl-11 sm:pl-12 pr-4 text-base sm:text-lg font-medium text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-4 focus:ring-primary/15 transition-all"
                       required
                     />
@@ -277,14 +280,14 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
               )}
 
               <div className="space-y-2">
-                <label className="text-sm font-bold text-on-surface uppercase tracking-wider">Email</label>
+                <label className="text-sm font-bold text-on-surface uppercase tracking-wider">{t('common.email')}</label>
                 <div className="relative">
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary/60" />
                   <input
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@example.com"
+                    placeholder={t('auth.emailPlaceholder')}
                     className="w-full h-12 sm:h-14 bg-surface-container-low rounded-xl sm:rounded-2xl pl-11 sm:pl-12 pr-4 text-base sm:text-lg font-medium text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-4 focus:ring-primary/15 transition-all"
                     required
                   />
@@ -292,14 +295,14 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-bold text-on-surface uppercase tracking-wider">Password</label>
+                <label className="text-sm font-bold text-on-surface uppercase tracking-wider">{t('common.password')}</label>
                 <div className="relative">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary/60" />
                   <input
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder={mode === 'register' ? 'Min. 6 characters' : 'Your password'}
+                    placeholder={mode === 'register' ? t('auth.passwordPlaceholder') : t('auth.passwordLoginPlaceholder')}
                     className="w-full h-14 bg-surface-container-low rounded-2xl pl-12 pr-12 text-lg font-medium text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-4 focus:ring-primary/15 transition-all"
                     required
                   />
@@ -343,7 +346,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                   />
                 ) : (
                   <>
-                    {mode === 'login' ? 'Sign In' : 'Create Account'}
+                    {mode === 'login' ? t('common.signIn') : t('common.createAccount')}
                     <ArrowRight className="w-5 h-5" />
                   </>
                 )}
@@ -354,7 +357,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
           {/* Divider */}
           <div className="flex items-center gap-4 my-6">
             <div className="flex-1 h-px bg-black/10" />
-            <span className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">or continue with</span>
+            <span className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">{t('common.orContinueWith')}</span>
             <div className="flex-1 h-px bg-black/10" />
           </div>
 
@@ -387,12 +390,12 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
         {/* Toggle */}
         <div className="text-center mt-6 sm:mt-8">
           <p className="text-on-surface-variant font-medium text-sm sm:text-base">
-            {mode === 'login' ? "Don't have an account?" : 'Already have an account?'}{' '}
+            {mode === 'login' ? t('common.noAccount') : t('common.hasAccount')}{' '}
             <button
               onClick={toggleMode}
               className="text-primary font-bold hover:underline transition-all"
             >
-              {mode === 'login' ? 'Register' : 'Sign In'}
+              {mode === 'login' ? t('common.register') : t('common.signIn')}
             </button>
           </p>
         </div>

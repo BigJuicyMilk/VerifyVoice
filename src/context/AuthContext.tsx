@@ -15,9 +15,9 @@ interface AuthState {
 export type SocialProvider = 'google' | 'wechat' | 'x';
 
 interface AuthContextType extends AuthState {
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  register: (name: string, email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  socialLogin: (provider: SocialProvider, name: string, email: string) => Promise<{ success: boolean; error?: string }>;
+  login: (email: string, password: string) => Promise<{ success: boolean; errorKey?: string; error?: string }>;
+  register: (name: string, email: string, password: string) => Promise<{ success: boolean; errorKey?: string; error?: string }>;
+  socialLogin: (provider: SocialProvider, name: string, email: string) => Promise<{ success: boolean; errorKey?: string; error?: string }>;
   logout: () => void;
 }
 
@@ -72,10 +72,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const users = await loadUsers();
     const found = users.find((u) => u.email.toLowerCase() === email.toLowerCase());
     if (!found) {
-      return { success: false, error: 'No account found with that email.' };
+      return { success: false, errorKey: 'auth.noAccount' };
     }
     if (found.password !== password) {
-      return { success: false, error: 'Incorrect password.' };
+      return { success: false, errorKey: 'auth.incorrectPassword' };
     }
     setUser(found);
     saveSession(found);
@@ -85,7 +85,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const register = useCallback(async (name: string, email: string, password: string) => {
     const users = await loadUsers();
     if (users.some((u) => u.email.toLowerCase() === email.toLowerCase())) {
-      return { success: false, error: 'An account with this email already exists.' };
+      return { success: false, errorKey: 'auth.emailExists' };
     }
     const newUser: User = {
       id: crypto.randomUUID(),
