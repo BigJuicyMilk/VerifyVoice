@@ -1,0 +1,178 @@
+export interface LearnFact {
+  id: string;
+  title: string;
+  color: string;
+  text: string;
+  iconColor: string;
+}
+
+export const learnFacts: LearnFact[] = [
+  {
+    id: '01',
+    title: 'Read the Ingredient List',
+    color: 'bg-surface-container-high',
+    text: 'The shorter the list, the less processed the food usually is. Look for whole foods you recognize near the top.',
+    iconColor: 'bg-primary',
+  },
+  {
+    id: '02',
+    title: 'Check Serving Sizes First',
+    color: 'bg-secondary-fixed',
+    text: 'A bottle or bag often contains more than one serving. Multiply calories, sugar, and sodium by the number of servings you actually eat.',
+    iconColor: 'bg-secondary',
+  },
+  {
+    id: '03',
+    title: 'Use % Daily Value',
+    color: 'bg-primary-fixed',
+    text: '5% Daily Value or less is low; 20% Daily Value or more is high. Use it to get less sodium and added sugar and more fiber.',
+    iconColor: 'bg-primary',
+  },
+  {
+    id: '04',
+    title: 'Limit Added Sugars',
+    color: 'bg-surface-container-highest',
+    text: 'The American Heart Association recommends no more than 25g of added sugar per day for most women and 36g for most men.',
+    iconColor: 'bg-primary',
+  },
+  {
+    id: '05',
+    title: 'Sugar Hides Under Many Names',
+    color: 'bg-white border-2 border-primary/5',
+    text: 'Sucrose, high-fructose corn syrup, dextrose, maltose, and anything ending in "-ose" are all added sugars in disguise.',
+    iconColor: 'bg-primary-container',
+  },
+  {
+    id: '06',
+    title: 'Cut Back on Sodium',
+    color: 'bg-tertiary-fixed',
+    text: 'Over 70% of the sodium Americans eat comes from packaged and restaurant foods. Compare brands and choose lower-sodium options.',
+    iconColor: 'bg-tertiary',
+  },
+  {
+    id: '07',
+    title: 'Sodium Targets',
+    color: 'bg-surface-container-high',
+    text: 'Aim for less than 400mg of sodium per 100g; less than 120mg per 100g is even better.',
+    iconColor: 'bg-primary',
+  },
+  {
+    id: '08',
+    title: 'Not All Fat is Bad',
+    color: 'bg-secondary-fixed',
+    text: 'Focus on limiting saturated fat and avoiding trans fat. Unsaturated fats from nuts, seeds, and olive oil can be heart-healthy.',
+    iconColor: 'bg-secondary',
+  },
+  {
+    id: '09',
+    title: 'Beware of Trans Fat Tricks',
+    color: 'bg-primary-fixed',
+    text: 'A label can say "0g trans fat" yet list "partially hydrogenated oil." That means there is still a small amount per serving.',
+    iconColor: 'bg-primary',
+  },
+  {
+    id: '10',
+    title: 'Prioritize Fiber',
+    color: 'bg-surface-container-highest',
+    text: 'Fiber helps lower cholesterol, control blood sugar, and keep you full. Adults need about 25–34 grams per day.',
+    iconColor: 'bg-primary',
+  },
+  {
+    id: '11',
+    title: 'Aim for Whole Grains',
+    color: 'bg-white border-2 border-primary/5',
+    text: 'The first ingredient should say "whole wheat," "oats," or "brown rice." "Enriched flour" usually means the grain is refined.',
+    iconColor: 'bg-primary-container',
+  },
+  {
+    id: '12',
+    title: 'Health Claims Can Mislead',
+    color: 'bg-tertiary-fixed',
+    text: 'Words like "natural," "low-fat," or "gluten-free" do not automatically mean a product is healthy. Always check the label.',
+    iconColor: 'bg-tertiary',
+  },
+  {
+    id: '13',
+    title: 'Low-Fat Can Mean High Sugar',
+    color: 'bg-surface-container-high',
+    text: 'When manufacturers remove fat, they often add sugar or salt to keep flavor. Compare both nutrients before buying.',
+    iconColor: 'bg-primary',
+  },
+  {
+    id: '14',
+    title: 'Ingredient Order Matters',
+    color: 'bg-secondary-fixed',
+    text: 'Ingredients are listed by weight from most to least. The first three ingredients tell you what the product is mostly made of.',
+    iconColor: 'bg-secondary',
+  },
+  {
+    id: '15',
+    title: 'Compare Per 100g',
+    color: 'bg-primary-fixed',
+    text: 'Serving sizes differ between brands. Use the "per 100g" column to compare similar products fairly.',
+    iconColor: 'bg-primary',
+  },
+  {
+    id: '16',
+    title: 'Fiber per 100g',
+    color: 'bg-surface-container-highest',
+    text: 'A food with more than 5g of dietary fiber per 100g is considered a good source of fiber.',
+    iconColor: 'bg-primary',
+  },
+  {
+    id: '17',
+    title: 'Eat a Rainbow',
+    color: 'bg-white border-2 border-primary/5',
+    text: 'Different colored fruits and vegetables provide different vitamins and antioxidants. Aim for variety each day.',
+    iconColor: 'bg-primary-container',
+  },
+  {
+    id: '18',
+    title: 'Five-a-Day Minimum',
+    color: 'bg-tertiary-fixed',
+    text: 'Most guidelines recommend at least five portions of fruits and vegetables daily. More is even better.',
+    iconColor: 'bg-tertiary',
+  },
+  {
+    id: '19',
+    title: 'Choose Wholegrain Carbs',
+    color: 'bg-surface-container-high',
+    text: 'Base meals on whole grains like brown rice, whole-wheat pasta, quinoa, oats, or potatoes with skins for more fiber and nutrients.',
+    iconColor: 'bg-primary',
+  },
+  {
+    id: '20',
+    title: 'Power of Pulses',
+    color: 'bg-secondary-fixed',
+    text: 'Beans, peas, and lentils are low in fat, high in protein and fiber, and make excellent alternatives to meat.',
+    iconColor: 'bg-secondary',
+  },
+  {
+    id: '21',
+    title: 'Limit Processed Meat',
+    color: 'bg-primary-fixed',
+    text: 'Bacon, ham, sausages, and deli meats are often high in salt and saturated fat. Choose leaner, less processed proteins more often.',
+    iconColor: 'bg-primary',
+  },
+  {
+    id: '22',
+    title: 'Hydrate with Water',
+    color: 'bg-surface-container-highest',
+    text: 'Sugary drinks are a leading source of added sugar. Water is the best everyday drink; add fruit slices if you want flavor.',
+    iconColor: 'bg-primary',
+  },
+  {
+    id: '23',
+    title: 'Oily Fish for Omega-3s',
+    color: 'bg-white border-2 border-primary/5',
+    text: 'Salmon, sardines, and mackerel provide omega-3 fatty acids that support heart health. Aim for at least one portion weekly.',
+    iconColor: 'bg-primary-container',
+  },
+  {
+    id: '24',
+    title: 'Watch Artificial Sweeteners',
+    color: 'bg-tertiary-fixed',
+    text: 'Low-calorie sweeteners may seem better than sugar, but some studies suggest they can increase cravings and overall calorie intake.',
+    iconColor: 'bg-tertiary',
+  },
+];
