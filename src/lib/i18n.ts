@@ -206,7 +206,7 @@ export type Translations = typeof translations.en;
 const translations = {
   en: {
     common: {
-      appName: 'Verify Voice',
+      appName: 'Ingrecheck',
       back: 'Back',
       cancel: 'Cancel',
       retry: 'Retry',
@@ -273,6 +273,10 @@ const translations = {
       ingredientList: 'Ingredient List',
       placeholder: 'e.g. Does this contain palm oil?',
       analyze: 'Analyze',
+      quickAnswer: 'Quick Answer',
+      quickAnswerHint: 'Short & fast',
+      detailedAnswer: 'Detailed Answer',
+      detailedAnswerHint: 'Full explanation',
       palmOil: 'Does it contain palm oil?',
       glutenFree: 'Is it gluten-free?',
       allergens: 'Any allergens?',
@@ -387,7 +391,7 @@ const translations = {
   },
   hi: {
     common: {
-      appName: 'Verify Voice',
+      appName: 'Ingrecheck',
       back: 'वापस',
       cancel: 'रद्द करें',
       retry: 'पुनः प्रयास करें',
@@ -454,6 +458,10 @@ const translations = {
       ingredientList: 'सामग्री सूची',
       placeholder: 'जैसे क्या इसमें पाम ऑयल है?',
       analyze: 'विश्लेषण करें',
+      quickAnswer: 'त्वरित उत्तर',
+      quickAnswerHint: 'छोटा और तेज़',
+      detailedAnswer: 'विस्तृत उत्तर',
+      detailedAnswerHint: 'पूरी व्याख्या',
       palmOil: 'क्या इसमें पाम ऑयल है?',
       glutenFree: 'क्या यह ग्लूटेन-मुक्त है?',
       allergens: 'क्या इसमें एलर्जी है?',
@@ -568,7 +576,7 @@ const translations = {
   },
   ar: {
     common: {
-      appName: 'Verify Voice',
+      appName: 'Ingrecheck',
       back: 'رجوع',
       cancel: 'إلغاء',
       retry: 'إعادة المحاولة',
@@ -635,6 +643,10 @@ const translations = {
       ingredientList: 'قائمة المكونات',
       placeholder: 'مثال: هل يحتوي على زيت النخيل؟',
       analyze: 'تحليل',
+      quickAnswer: 'إجابة سريعة',
+      quickAnswerHint: 'قصيرة وسريعة',
+      detailedAnswer: 'إجابة مفصّلة',
+      detailedAnswerHint: 'شرح كامل',
       palmOil: 'هل يحتوي على زيت النخيل؟',
       glutenFree: 'هل هو خالٍ من الغلوتين؟',
       allergens: 'هل يحتوي على مسببات حساسية؟',
@@ -749,7 +761,7 @@ const translations = {
   },
   zh: {
     common: {
-      appName: 'Verify Voice',
+      appName: 'Ingrecheck',
       back: '返回',
       cancel: '取消',
       retry: '重试',
@@ -816,6 +828,10 @@ const translations = {
       ingredientList: '配料表',
       placeholder: '例如：这含有棕榈油吗？',
       analyze: '分析',
+      quickAnswer: '快速回答',
+      quickAnswerHint: '简短快捷',
+      detailedAnswer: '详细回答',
+      detailedAnswerHint: '完整解释',
       palmOil: '含有棕榈油吗？',
       glutenFree: '是否无麸质？',
       allergens: '有过敏原吗？',
@@ -930,7 +946,7 @@ const translations = {
   },
   es: {
     common: {
-      appName: 'Verify Voice',
+      appName: 'Ingrecheck',
       back: 'Atrás',
       cancel: 'Cancelar',
       retry: 'Reintentar',
@@ -997,6 +1013,10 @@ const translations = {
       ingredientList: 'Lista de ingredientes',
       placeholder: 'p. ej. ¿Contiene aceite de palma?',
       analyze: 'Analizar',
+      quickAnswer: 'Respuesta rápida',
+      quickAnswerHint: 'Corta y veloz',
+      detailedAnswer: 'Respuesta detallada',
+      detailedAnswerHint: 'Explicación completa',
       palmOil: '¿Contiene aceite de palma?',
       glutenFree: '¿Es libre de gluten?',
       allergens: '¿Tiene alérgenos?',

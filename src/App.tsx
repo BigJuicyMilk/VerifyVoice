@@ -633,7 +633,7 @@ const QuestionView = ({
   isAnalyzing,
 }: {
   imagePath: string;
-  onAnalyze: (question: string) => void;
+  onAnalyze: (question: string, mode: 'short' | 'detailed') => void;
   isAnalyzing: boolean;
 }) => {
   const { t } = useLanguage();
@@ -642,7 +642,12 @@ const QuestionView = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!question.trim() || isAnalyzing) return;
-    onAnalyze(question.trim());
+    onAnalyze(question.trim(), 'detailed');
+  };
+
+  const handleQuick = () => {
+    if (!question.trim() || isAnalyzing) return;
+    onAnalyze(question.trim(), 'short');
   };
 
   const suggestions = [
@@ -677,20 +682,23 @@ const QuestionView = ({
 
         {/* Question Input */}
         <form onSubmit={handleSubmit} className="w-full space-y-3 sm:space-y-4">
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
-            <input
-              type="text"
-              value={question}
-              onChange={(e) => setQuestion(e.target.value)}
-              placeholder={t('question.placeholder')}
-              className="flex-1 h-12 sm:h-16 bg-white rounded-xl sm:rounded-2xl px-4 sm:px-6 text-base sm:text-xl font-bold text-on-surface placeholder:text-on-surface-variant/40 border-none focus:ring-4 focus:ring-primary/20 transition-all shadow-sm"
-              disabled={isAnalyzing}
-            />
+          <input
+            type="text"
+            value={question}
+            onChange={(e) => setQuestion(e.target.value)}
+            placeholder={t('question.placeholder')}
+            className="w-full h-12 sm:h-16 bg-white rounded-xl sm:rounded-2xl px-4 sm:px-6 text-base sm:text-xl font-bold text-on-surface placeholder:text-on-surface-variant/40 border-none focus:ring-4 focus:ring-primary/20 transition-all shadow-sm"
+            disabled={isAnalyzing}
+          />
+
+          {/* Answer mode buttons */}
+          <div className="grid grid-cols-2 gap-2 sm:gap-3">
             <button
-              type="submit"
+              type="button"
+              onClick={handleQuick}
               disabled={!question.trim() || isAnalyzing}
               className={cn(
-                'h-12 sm:h-16 px-6 sm:px-8 rounded-xl sm:rounded-2xl bg-primary text-white font-bold text-base sm:text-xl flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg whitespace-nowrap',
+                'h-14 sm:h-20 px-3 sm:px-6 rounded-xl sm:rounded-2xl bg-white border-2 border-primary text-primary font-bold flex flex-col items-center justify-center gap-0.5 sm:gap-1 transition-all active:scale-95 shadow-lg',
                 (!question.trim() || isAnalyzing) && 'opacity-50 cursor-not-allowed'
               )}
             >
@@ -698,8 +706,31 @@ const QuestionView = ({
                 <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 animate-spin" />
               ) : (
                 <>
-                  <Sparkles className="w-5 h-5 sm:w-6 sm:h-6" />
-                  {t('question.analyze')}
+                  <span className="flex items-center gap-1.5 sm:gap-2 text-sm sm:text-xl">
+                    <Zap className="w-4 h-4 sm:w-6 sm:h-6" />
+                    {t('question.quickAnswer')}
+                  </span>
+                  <span className="text-[10px] sm:text-xs font-medium opacity-70">{t('question.quickAnswerHint')}</span>
+                </>
+              )}
+            </button>
+            <button
+              type="submit"
+              disabled={!question.trim() || isAnalyzing}
+              className={cn(
+                'h-14 sm:h-20 px-3 sm:px-6 rounded-xl sm:rounded-2xl bg-primary text-white font-bold flex flex-col items-center justify-center gap-0.5 sm:gap-1 transition-all active:scale-95 shadow-lg',
+                (!question.trim() || isAnalyzing) && 'opacity-50 cursor-not-allowed'
+              )}
+            >
+              {isAnalyzing ? (
+                <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 animate-spin" />
+              ) : (
+                <>
+                  <span className="flex items-center gap-1.5 sm:gap-2 text-sm sm:text-xl">
+                    <Sparkles className="w-4 h-4 sm:w-6 sm:h-6" />
+                    {t('question.detailedAnswer')}
+                  </span>
+                  <span className="text-[10px] sm:text-xs font-medium opacity-70">{t('question.detailedAnswerHint')}</span>
                 </>
               )}
             </button>
@@ -1700,7 +1731,7 @@ export default function App() {
     setCurrentScreen('question');
   };
 
-  const handleAnalyze = async (question: string) => {
+  const handleAnalyze = async (question: string, mode: 'short' | 'detailed' = 'detailed') => {
     if (!scanImagePath || !user) return;
     setUserQuestion(question);
     setIsAnalyzing(true);
@@ -1714,6 +1745,7 @@ export default function App() {
           imagePath: scanImagePath,
           question,
           language: lang,
+          mode,
         }),
       });
 

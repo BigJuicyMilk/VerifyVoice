@@ -349,7 +349,7 @@ function userDataPlugin(env: EnvVars): Plugin {
           req.on('end', () => {
             (async () => {
               try {
-                const { userId, imagePath, question, language } = JSON.parse(body);
+                const { userId, imagePath, question, language, mode } = JSON.parse(body);
                 if (!userId || !imagePath || !question) {
                   res.statusCode = 400;
                   res.end(JSON.stringify({ error: 'Missing userId, imagePath, or question' }));
@@ -453,6 +453,10 @@ function userDataPlugin(env: EnvVars): Plugin {
                     serverT(language, 'noTextExtracted');
 
                   // Step 2: Answer the user's question based on the extracted ingredients.
+                  const answerInstruction =
+                    mode === 'short'
+                      ? 'Answer in 1-2 short sentences only. Give the direct answer first (yes/no/it depends), then the key reason. No extra detail, no lists.'
+                      : 'Keep your answer concise but informative.';
                   const completion = await client.chat.completions.create({
                     model: llmModel,
                     messages: [
@@ -463,7 +467,7 @@ function userDataPlugin(env: EnvVars): Plugin {
                       },
                       {
                         role: 'user',
-                        content: `Ingredients extracted from the product label:\n${extractedText}\n\nUser question: ${question}\n\nPlease answer the question based only on the ingredient list above. If the list clearly supports the answer, say so confidently. If it does not, explain why. If you are unsure, say so. Keep your answer concise but informative. Respond in ${language || 'English'}.`,
+                        content: `Ingredients extracted from the product label:\n${extractedText}\n\nUser question: ${question}\n\nPlease answer the question based only on the ingredient list above. If the list clearly supports the answer, say so confidently. If it does not, explain why. If you are unsure, say so. ${answerInstruction} Respond in ${language || 'English'}.`,
                       },
                     ],
                     stream: false,

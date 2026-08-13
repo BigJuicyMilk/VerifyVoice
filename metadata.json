@@ -1,5 +1,5 @@
 {
-  "name": "Verify Voice",
+  "name": "Ingrecheck",
   "description": "An AI-powered product safety and voice recognition assistant designed for clarity and accessibility.",
   "requestFramePermissions": [
     "camera",
