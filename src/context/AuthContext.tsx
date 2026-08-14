@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { uuid } from '../lib/utils';
 
 export interface User {
   id: string;
@@ -88,7 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { success: false, errorKey: 'auth.emailExists' };
     }
     const newUser: User = {
-      id: crypto.randomUUID(),
+      id: uuid(),
       name: name.trim(),
       email: email.trim().toLowerCase(),
       password,
@@ -110,10 +111,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { success: true };
     }
     const newUser: User = {
-      id: crypto.randomUUID(),
+      id: uuid(),
       name: name.trim(),
       email: normalizedEmail,
-      password: crypto.randomUUID(),
+      password: uuid(),
     };
     users.push(newUser);
     await saveUsers(users);

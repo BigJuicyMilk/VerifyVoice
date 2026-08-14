@@ -38,7 +38,7 @@ import {
   Scale,
   Globe
 } from 'lucide-react';
-import { cn } from './lib/utils';
+import { cn, uuid } from './lib/utils';
 import { useAuth } from './context/AuthContext';
 import { useLanguage } from './context/LanguageContext';
 import AuthScreen from './components/AuthScreen';
@@ -960,7 +960,7 @@ const CompareView = ({ onBack }: { onBack: () => void }) => {
   };
 
   const addProduct = async (file: File) => {
-    const id = crypto.randomUUID();
+    const id = uuid();
     const previewUrl = URL.createObjectURL(file);
     const defaultName = file.name.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' ');
 
