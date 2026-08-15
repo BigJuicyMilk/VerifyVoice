@@ -805,7 +805,7 @@ const ResultsView = ({
         <p className="text-lg sm:text-2xl font-bold text-on-surface">{question}</p>
       </motion.div>
 
-      {/* AI Answer */}
+      {/* Answer */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
