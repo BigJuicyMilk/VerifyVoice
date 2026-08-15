@@ -651,6 +651,8 @@ const QuestionView = ({
   };
 
   const suggestions = [
+    t('question.healthy'),
+    t('question.highSugar'),
     t('question.palmOil'),
     t('question.glutenFree'),
     t('question.allergens'),

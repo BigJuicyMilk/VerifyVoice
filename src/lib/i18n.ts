@@ -281,6 +281,8 @@ const translations = {
       glutenFree: 'Is it gluten-free?',
       allergens: 'Any allergens?',
       vegan: 'Is it vegan?',
+      healthy: 'Is it healthy?',
+      highSugar: 'Is it high in sugar?',
     },
     results: {
       aiAnalysisComplete: 'Analysis Complete',
@@ -466,6 +468,8 @@ const translations = {
       glutenFree: 'क्या यह ग्लूटेन-मुक्त है?',
       allergens: 'क्या इसमें एलर्जी है?',
       vegan: 'क्या यह शाकाहारी है?',
+      healthy: 'क्या यह स्वस्थ है?',
+      highSugar: 'क्या इसमें चीनी ज़्यादा है?',
     },
     results: {
       aiAnalysisComplete: 'विश्लेषण पूर्ण',
@@ -651,6 +655,8 @@ const translations = {
       glutenFree: 'هل هو خالٍ من الغلوتين؟',
       allergens: 'هل يحتوي على مسببات حساسية؟',
       vegan: 'هل هو نباتي؟',
+      healthy: 'هل هو صحي؟',
+      highSugar: 'هل نسبة السكر فيه مرتفعة؟',
     },
     results: {
       aiAnalysisComplete: 'اكتمل التحليل',
@@ -836,6 +842,8 @@ const translations = {
       glutenFree: '是否无麸质？',
       allergens: '有过敏原吗？',
       vegan: '是否纯素？',
+      healthy: '这个健康吗？',
+      highSugar: '含糖量高不高？',
     },
     results: {
       aiAnalysisComplete: '分析完成',
@@ -1021,6 +1029,8 @@ const translations = {
       glutenFree: '¿Es libre de gluten?',
       allergens: '¿Tiene alérgenos?',
       vegan: '¿Es vegano?',
+      healthy: '¿Es saludable?',
+      highSugar: '¿Tiene mucho azúcar?',
     },
     results: {
       aiAnalysisComplete: 'Análisis completado',
