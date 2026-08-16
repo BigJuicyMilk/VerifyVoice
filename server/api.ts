@@ -2,7 +2,7 @@ import path from 'path';
 import fs from 'fs';
 import OpenAI from 'openai';
 import { initDb, getAllUsers, upsertUsers, addImage, getImagesByUserId, updateImageRating } from './db';
-import { initCos, isCosEnabled, uploadImage } from './cos';
+import { initCos, isCosEnabled, uploadImage, downloadImage, extractCosKey } from './cos';
 
 export interface EnvVars {
   DATABASE_URL?: string;
@@ -376,18 +376,24 @@ export function registerApiMiddlewares(use: UseFn, env: EnvVars, rootDir: string
             mimeType = extToMime[ext] || 'image/jpeg';
 
             if (imagePathStr.startsWith('http://') || imagePathStr.startsWith('https://')) {
-              const response = await fetch(imagePathStr);
-              if (!response.ok) {
-                res.statusCode = 404;
-                res.end(JSON.stringify({ error: 'Image not found at remote URL' }));
-                return;
+              const cosKey = extractCosKey(imagePathStr);
+              if (cosKey && isCosEnabled()) {
+                // Private COS buckets cannot be fetched by plain URL; download with credentials.
+                imageBuffer = await downloadImage(cosKey);
+              } else {
+                const response = await fetch(imagePathStr);
+                if (!response.ok) {
+                  res.statusCode = 404;
+                  res.end(JSON.stringify({ error: 'Image not found at remote URL' }));
+                  return;
+                }
+                const contentType = response.headers.get('content-type');
+                if (contentType) {
+                  mimeType = contentType.split(';')[0].trim() || mimeType;
+                }
+                const arrayBuffer = await response.arrayBuffer();
+                imageBuffer = Buffer.from(arrayBuffer);
               }
-              const contentType = response.headers.get('content-type');
-              if (contentType) {
-                mimeType = contentType.split(';')[0].trim() || mimeType;
-              }
-              const arrayBuffer = await response.arrayBuffer();
-              imageBuffer = Buffer.from(arrayBuffer);
             } else {
               // Resolve image file path
               const relativePath = imagePathStr.replace(/^\/uploads\//, '');
@@ -751,17 +757,19 @@ export function registerApiMiddlewares(use: UseFn, env: EnvVars, rootDir: string
 
           let imageBuffer: Buffer;
           if (imagePathStr.startsWith('http://') || imagePathStr.startsWith('https://')) {
-            const response = await fetch(imagePathStr);
-            if (!response.ok) {
-              res.statusCode = 404;
-              res.end(JSON.stringify({ error: 'Image not found at remote URL' }));
-              return;
-            }
-            const contentType = response.headers.get('content-type');
-            const arrayBuffer = await response.arrayBuffer();
-            imageBuffer = Buffer.from(arrayBuffer);
-            if (contentType) {
-              // override mimeType from response if available
+            const cosKey = extractCosKey(imagePathStr);
+            if (cosKey && isCosEnabled()) {
+              // Private COS buckets cannot be fetched by plain URL; download with credentials.
+              imageBuffer = await downloadImage(cosKey);
+            } else {
+              const response = await fetch(imagePathStr);
+              if (!response.ok) {
+                res.statusCode = 404;
+                res.end(JSON.stringify({ error: 'Image not found at remote URL' }));
+                return;
+              }
+              const arrayBuffer = await response.arrayBuffer();
+              imageBuffer = Buffer.from(arrayBuffer);
             }
           } else {
             const relativePath = imagePathStr.replace(/^\/uploads\//, '');
