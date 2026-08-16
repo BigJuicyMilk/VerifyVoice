@@ -4,6 +4,7 @@ import { AudioLines, Eye, EyeOff, ArrowRight, User, Mail, Lock, X } from 'lucide
 import { cn } from '../lib/utils';
 import { useAuth, type SocialProvider } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
+import LanguageSwitcher from './LanguageSwitcher';
 
 type AuthMode = 'login' | 'register';
 
@@ -232,6 +233,11 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
           />
         )}
       </AnimatePresence>
+
+      {/* Language Switcher */}
+      <div className="fixed top-4 end-4 z-50">
+        <LanguageSwitcher />
+      </div>
 
       <motion.div
         initial={{ opacity: 0, y: 30 }}
