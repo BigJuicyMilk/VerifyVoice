@@ -205,7 +205,13 @@ export function registerApiMiddlewares(use: UseFn, env: EnvVars, rootDir: string
             }
 
             const safeUsername = String(username).trim().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_-]/g, '');
-            const safeFilename = String(filename).replace(/[^a-zA-Z0-9._-]/g, '');
+            let safeFilename = String(filename).replace(/[^a-zA-Z0-9._-]/g, '');
+            // Non-ASCII names (e.g. Chinese) can sanitize to "" or a dotfile like
+            // ".jpg", which breaks serving and can even target the directory itself.
+            if (!safeFilename || safeFilename.startsWith('.')) {
+              const ext = path.extname(safeFilename) || '.jpg';
+              safeFilename = `image_${Date.now()}${ext}`;
+            }
 
             // Accept both raw base64 and data URLs (data:image/png;base64,...)
             let base64 = String(data);

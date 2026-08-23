@@ -205,7 +205,7 @@ const Header = ({
 
 // --- Screen Views ---
 
-const ScannerView = ({ onScan }: { onScan: (imagePath: string) => void }) => {
+const ScannerView = ({ onScan }: { onScan: (imagePath: string, localPreview?: string) => void }) => {
   const { t } = useLanguage();
   const { user } = useAuth();
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -333,6 +333,7 @@ const ScannerView = ({ onScan }: { onScan: (imagePath: string) => void }) => {
     const folderName = user.id;
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     let uploadedPath = '';
+    let localPreview: string | undefined;
 
     try {
       if (selectedFile) {
@@ -350,6 +351,7 @@ const ScannerView = ({ onScan }: { onScan: (imagePath: string) => void }) => {
         if (!res.ok) throw new Error(t('scanner.uploadFailed'));
         const result = await res.json();
         uploadedPath = result.path;
+        localPreview = previewUrl ?? dataUrl;
       } else if (!cameraError && videoRef.current) {
         // Capture the current camera frame and upload it
         const frame = captureVideoFrame();
@@ -366,6 +368,7 @@ const ScannerView = ({ onScan }: { onScan: (imagePath: string) => void }) => {
           if (!res.ok) throw new Error(t('scanner.uploadFailed'));
           const result = await res.json();
           uploadedPath = result.path;
+          localPreview = frame;
         }
       }
     } catch (err: any) {
@@ -377,7 +380,7 @@ const ScannerView = ({ onScan }: { onScan: (imagePath: string) => void }) => {
     setTimeout(() => {
       setIsScanning(false);
       if (uploadedPath) {
-        onScan(uploadedPath);
+        onScan(uploadedPath, localPreview);
       }
     }, 1200);
   };
@@ -1660,13 +1663,15 @@ export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('check');
   const [audioOn, setAudioOn] = useState(true);
   const [scanImagePath, setScanImagePath] = useState<string | null>(null);
+  const [scanImagePreview, setScanImagePreview] = useState<string | null>(null);
   const [userQuestion, setUserQuestion] = useState('');
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const { isAuthenticated, user } = useAuth();
 
-  const handleScan = (imagePath: string) => {
+  const handleScan = (imagePath: string, localPreview?: string) => {
     setScanImagePath(imagePath);
+    setScanImagePreview(localPreview ?? null);
     setAnalysisResult(null);
     setUserQuestion('');
     setCurrentScreen('question');
@@ -1712,6 +1717,7 @@ export default function App() {
 
   const handleScanAnother = () => {
     setScanImagePath(null);
+    setScanImagePreview(null);
     setAnalysisResult(null);
     setUserQuestion('');
     setCurrentScreen('check');
@@ -1725,6 +1731,7 @@ export default function App() {
 
   const handleHistorySelect = (record: HistoryRecord) => {
     setScanImagePath(record.imagePath);
+    setScanImagePreview(null);
     setUserQuestion(record.question);
     setAnalysisResult({
       extractedText: record.extractedText,
@@ -1742,7 +1749,7 @@ export default function App() {
       case 'question':
         return scanImagePath ? (
           <QuestionView
-            imagePath={scanImagePath}
+            imagePath={scanImagePreview || scanImagePath}
             onAnalyze={handleAnalyze}
             isAnalyzing={isAnalyzing}
           />
@@ -1752,7 +1759,7 @@ export default function App() {
       case 'results':
         return scanImagePath && analysisResult ? (
           <ResultsView
-            imagePath={scanImagePath}
+            imagePath={scanImagePreview || scanImagePath}
             question={userQuestion}
             result={analysisResult}
             onScanAnother={handleScanAnother}
