@@ -495,8 +495,6 @@ export function registerApiMiddlewares(use: UseFn, env: EnvVars, rootDir: string
                 serverT(language, 'noAnalysis');
 
               // Step 3: Rate overall health based on the extracted ingredients.
-              let healthScore: number | null = null;
-              let healthReason = '';
               try {
                 const healthCompletion = await client.chat.completions.create({
                   model: llmModel,
@@ -933,6 +931,81 @@ export function registerApiMiddlewares(use: UseFn, env: EnvVars, rootDir: string
     }
 
     next();
+  });
+
+  // --- Image Proxy API ---
+  // Streams an uploaded image by its stored path/URL. Required for private
+  // COS buckets, whose plain URLs cannot be loaded by a browser <img> tag.
+  use('/api/image', async (req, res, next) => {
+    if (!req.url || !req.url.startsWith('/')) {
+      next();
+      return;
+    }
+
+    if (req.method === 'OPTIONS') {
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+      res.statusCode = 204;
+      res.end();
+      return;
+    }
+
+    if (req.method !== 'GET') {
+      next();
+      return;
+    }
+
+    const extToMime: Record<string, string> = {
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.png': 'image/png',
+      '.gif': 'image/gif',
+      '.webp': 'image/webp',
+      '.bmp': 'image/bmp',
+    };
+
+    try {
+      const src = new URLSearchParams(req.url.slice(1).split('?')[1] || '').get('src');
+      if (!src) {
+        res.statusCode = 400;
+        res.end(JSON.stringify({ error: 'Missing src parameter' }));
+        return;
+      }
+
+      let buffer: Buffer;
+      let ext: string;
+
+      if (src.startsWith('http://') || src.startsWith('https://')) {
+        // Only COS URLs produced by our own uploads are allowed (no open proxy).
+        const cosKey = extractCosKey(src);
+        if (!cosKey || !isCosEnabled()) {
+          res.statusCode = 403;
+          res.end(JSON.stringify({ error: 'Unsupported image URL' }));
+          return;
+        }
+        buffer = await downloadImage(cosKey);
+        ext = path.extname(cosKey.split('?')[0]).toLowerCase();
+      } else {
+        const relativePath = src.replace(/^\/uploads\//, '');
+        const imageFilePath = path.join(imagesDir, relativePath);
+        const resolvedImagePath = path.resolve(imageFilePath);
+        const resolvedImagesDir = path.resolve(imagesDir);
+        if (!resolvedImagePath.startsWith(resolvedImagesDir) || !fs.existsSync(resolvedImagePath)) {
+          res.statusCode = 404;
+          res.end(JSON.stringify({ error: 'Image not found' }));
+          return;
+        }
+        buffer = fs.readFileSync(resolvedImagePath);
+        ext = path.extname(resolvedImagePath).toLowerCase();
+      }
+
+      res.setHeader('Content-Type', extToMime[ext] || 'image/jpeg');
+      res.setHeader('Cache-Control', 'private, max-age=86400');
+      res.end(buffer);
+    } catch (err: any) {
+      res.statusCode = 500;
+      res.end(JSON.stringify({ error: 'Failed to load image: ' + err.message }));
+    }
   });
 
   // --- Serve Uploaded Images Statically (local fallback) ---

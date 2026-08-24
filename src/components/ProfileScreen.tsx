@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion } from 'motion/react';
 import { User, Mail, LogOut, ShieldCheck, ArrowLeft, Upload, Image as ImageIcon, X, Loader2, Star } from 'lucide-react';
-import { cn } from '../lib/utils';
+import { cn, imageSrc } from '../lib/utils';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -255,7 +255,7 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2">
               {images.map((img) => (
                 <div key={img.url} className="relative aspect-square rounded-2xl overflow-hidden border border-black/5 bg-surface-container-low">
-                  <img src={img.url} alt={t('common.uploadedAlt')} className="w-full h-full object-cover" />
+                  <img src={imageSrc(img.url)} alt={t('common.uploadedAlt')} className="w-full h-full object-cover" />
                   <div className="absolute inset-x-0 top-0 p-2 sm:p-3 flex justify-center">
                     <div className="flex flex-col items-center gap-1 bg-black/70 backdrop-blur-sm rounded-2xl px-3 py-1.5 sm:px-4 sm:py-2 shadow-lg">
                       <span className="text-[9px] sm:text-[10px] font-black text-white uppercase tracking-wider">

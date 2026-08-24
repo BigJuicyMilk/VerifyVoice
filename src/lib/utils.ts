@@ -20,3 +20,14 @@ export function uuid(): string {
     return v.toString(16);
   });
 }
+
+/**
+ * Returns a displayable URL for a stored image. In-memory previews
+ * (blob:/data: URLs from a fresh scan) are used as-is; persisted paths
+ * (/uploads/... or COS URLs) go through the server-side proxy, which can
+ * read private COS buckets that a browser <img> tag cannot.
+ */
+export function imageSrc(src: string): string {
+  if (!src || /^(blob:|data:)/i.test(src)) return src;
+  return `/api/image?src=${encodeURIComponent(src)}`;
+}

@@ -37,7 +37,7 @@ import {
   RefreshCw,
   Scale
 } from 'lucide-react';
-import { cn, uuid } from './lib/utils';
+import { cn, uuid, imageSrc } from './lib/utils';
 import { useAuth } from './context/AuthContext';
 import { useLanguage } from './context/LanguageContext';
 import AuthScreen from './components/AuthScreen';
@@ -618,7 +618,7 @@ const QuestionView = ({
 
         {/* Scanned Image Preview */}
         <div className="relative w-full aspect-[4/3] rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl bg-surface-container-highest">
-          <img src={imagePath} alt={t('common.scannedProductAlt')} className="w-full h-full object-cover" />
+          <img src={imageSrc(imagePath)} alt={t('common.scannedProductAlt')} className="w-full h-full object-cover" />
           <div className="absolute top-3 left-3 sm:top-4 sm:left-4 bg-primary text-white px-3 sm:px-4 py-1 sm:py-1.5 rounded-full text-xs sm:text-sm font-black uppercase tracking-wider">
             {t('question.ingredientList')}
           </div>
@@ -838,7 +838,7 @@ const ResultsView = ({
           </div>
           <div className="mt-auto">
             <img
-              src={imagePath}
+              src={imageSrc(imagePath)}
               alt={t('common.scannedProductAlt')}
               className="w-full h-48 sm:h-64 object-cover rounded-xl sm:rounded-2xl shadow-inner"
             />
@@ -1344,7 +1344,7 @@ const HistoryView = ({
                 className="w-14 h-14 sm:w-20 sm:h-20 rounded-xl sm:rounded-2xl overflow-hidden flex-shrink-0 bg-surface-container-low"
               >
                 <img
-                  src={record.imagePath}
+                  src={imageSrc(record.imagePath)}
                   alt={t('common.scannedProductAlt')}
                   className="w-full h-full object-cover"
                 />
