@@ -35,7 +35,10 @@ import {
   Clock,
   RotateCcw,
   RefreshCw,
-  Scale
+  Scale,
+  Trophy,
+  Camera,
+  Check
 } from 'lucide-react';
 import { cn, uuid, imageSrc } from './lib/utils';
 import { useAuth } from './context/AuthContext';
@@ -885,6 +888,12 @@ interface CompareProduct {
   error?: string;
 }
 
+const scoreBarColor = (score: number) =>
+  score >= 7 ? 'bg-green-500' : score >= 4 ? 'bg-yellow-400' : 'bg-red-400';
+
+const scoreTextColor = (score: number) =>
+  score >= 7 ? 'text-green-600' : score >= 4 ? 'text-yellow-600' : 'text-red-500';
+
 const CompareView = ({ onBack }: { onBack: () => void }) => {
   const { t, speechLang, lang } = useLanguage();
   const { user } = useAuth();
@@ -1036,6 +1045,12 @@ const CompareView = ({ onBack }: { onBack: () => void }) => {
     }
   };
 
+  const steps = [
+    { icon: Camera, title: t('compare.step1Title'), desc: t('compare.step1Desc') },
+    { icon: Sparkles, title: t('compare.step2Title'), desc: t('compare.step2Desc') },
+    { icon: Trophy, title: t('compare.step3Title'), desc: t('compare.step3Desc') },
+  ];
+
   return (
     <div className="pt-4 sm:pt-8 pb-24 sm:pb-32 px-4 sm:px-6 max-w-6xl mx-auto w-full min-h-[calc(100vh-80px)]">
       <motion.div
@@ -1052,14 +1067,50 @@ const CompareView = ({ onBack }: { onBack: () => void }) => {
           {t('common.back')}
         </button>
 
-        <section>
+        <section className="text-center">
+          <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-primary to-primary-container flex items-center justify-center shadow-xl">
+            <Scale className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
+          </div>
           <h2 className="text-4xl sm:text-6xl font-black text-on-surface leading-none tracking-tighter mb-4">
             {t('compare.title')}
           </h2>
-          <p className="text-xl sm:text-2xl text-on-surface-variant max-w-3xl leading-tight font-medium">
+          <p className="text-xl sm:text-2xl text-on-surface-variant max-w-3xl mx-auto leading-tight font-medium">
             {t('compare.description', { max: MAX_COMPARE_PRODUCTS })}
           </p>
         </section>
+
+        {/* How it works — shown until the first product is added */}
+        {products.length === 0 && (
+          <div className="space-y-3 sm:space-y-4">
+            <p className="text-center text-xs sm:text-sm font-black uppercase tracking-widest text-on-surface-variant">
+              {t('compare.howItWorksTitle')}
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+              {steps.map((step, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 + i * 0.1 }}
+                  className="bg-white rounded-3xl border border-black/5 p-4 sm:p-5 flex sm:flex-col items-start sm:items-center gap-3 sm:gap-2 sm:text-center shadow-sm"
+                >
+                  <div className="relative flex-shrink-0">
+                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
+                      <step.icon className="w-6 h-6 sm:w-7 sm:h-7 text-primary" />
+                    </div>
+                    <span className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-primary text-white text-xs font-black flex items-center justify-center shadow">
+                      {i + 1}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="font-black text-on-surface text-base sm:text-lg">{step.title}</p>
+                    <p className="text-sm text-on-surface-variant font-medium leading-snug">{step.desc}</p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Upload area */}
         <div className="bg-white p-5 sm:p-8 rounded-3xl shadow-sm border border-black/5 space-y-4">
@@ -1086,10 +1137,13 @@ const CompareView = ({ onBack }: { onBack: () => void }) => {
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={products.length >= MAX_COMPARE_PRODUCTS}
-            className="w-full h-14 sm:h-20 rounded-2xl border-2 border-dashed border-primary/30 flex items-center justify-center gap-2 sm:gap-3 text-primary font-bold hover:bg-primary/5 transition-colors disabled:opacity-50 text-sm sm:text-base"
+            className="w-full py-6 sm:py-8 rounded-3xl border-2 border-dashed border-primary/30 flex flex-col items-center justify-center gap-2 text-primary font-bold hover:bg-primary/5 transition-colors disabled:opacity-50"
           >
-            <Upload className="w-5 h-5 sm:w-6 sm:h-6" />
-            {t('compare.choosePhotos')}
+            <span className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-primary/10 flex items-center justify-center">
+              <Upload className="w-6 h-6 sm:w-7 sm:h-7" />
+            </span>
+            <span className="text-sm sm:text-base">{t('compare.choosePhotos')}</span>
+            <span className="text-xs sm:text-sm font-medium text-on-surface-variant px-4">{t('compare.dropHint')}</span>
           </button>
 
           {error && (
@@ -1103,7 +1157,7 @@ const CompareView = ({ onBack }: { onBack: () => void }) => {
         {/* Product cards */}
         {products.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
-            {products.map((product) => (
+            {products.map((product, index) => (
               <motion.div
                 key={product.id}
                 initial={{ opacity: 0, y: 20 }}
@@ -1113,6 +1167,9 @@ const CompareView = ({ onBack }: { onBack: () => void }) => {
                 <div className="flex items-start justify-between gap-3">
                   <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden flex-shrink-0 bg-surface-container-low">
                     <img src={product.previewUrl} alt={product.name} className="w-full h-full object-cover" />
+                    <span className="absolute bottom-1 left-1 px-2 py-0.5 bg-black/60 text-white text-[10px] font-black uppercase tracking-wider rounded-full">
+                      {t('compare.productNumber', { n: index + 1 })}
+                    </span>
                     {product.status !== 'done' && (
                       <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                         {product.status === 'error' ? (
@@ -1180,16 +1237,21 @@ const CompareView = ({ onBack }: { onBack: () => void }) => {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-gradient-to-br from-primary to-primary-container text-white p-6 sm:p-10 rounded-3xl shadow-2xl"
+              className="bg-gradient-to-br from-primary to-primary-container text-white p-6 sm:p-10 rounded-3xl shadow-2xl relative overflow-hidden"
             >
-              <div className="flex items-start justify-between gap-4 mb-4">
+              <div className="absolute top-0 right-0 w-40 h-40 sm:w-64 sm:h-64 bg-white/10 rounded-full -mr-12 -mt-12 sm:-mr-20 sm:-mt-20 blur-2xl" />
+              <div className="flex items-start justify-between gap-4 mb-4 relative z-10">
                 <div>
-                  <p className="text-xs sm:text-sm font-black uppercase tracking-widest opacity-80">{t('compare.healthiestChoice')}</p>
-                  <h3 className="text-3xl sm:text-5xl font-black">{winnerName}</h3>
+                  <p className="flex items-center gap-2 text-xs sm:text-sm font-black uppercase tracking-widest opacity-80">
+                    <Trophy className="w-4 h-4 sm:w-5 sm:h-5" />
+                    {t('compare.verdict')}
+                  </p>
+                  <h3 className="text-3xl sm:text-5xl font-black mt-1">{winnerName}</h3>
+                  <p className="text-sm sm:text-base font-bold opacity-80 mt-1">{t('compare.healthiestChoice')}</p>
                 </div>
                 <SpeechButton text={fullResultText} speechLang={speechLang} ariaLabel={t('common.readAloud')} className="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0" />
               </div>
-              <p className="text-base sm:text-xl font-medium leading-relaxed whitespace-pre-wrap">
+              <p className="text-base sm:text-xl font-medium leading-relaxed whitespace-pre-wrap relative z-10">
                 {result.explanation}
               </p>
             </motion.div>
@@ -1205,30 +1267,65 @@ const CompareView = ({ onBack }: { onBack: () => void }) => {
                     transition={{ delay: 0.05 * idx }}
                     className={cn(
                       'bg-white p-5 sm:p-6 rounded-3xl shadow-sm border space-y-4',
-                      isWinner ? 'border-primary ring-2 ring-primary/20' : 'border-black/5'
+                      isWinner ? 'border-yellow-300 ring-2 ring-yellow-300/50' : 'border-black/5'
                     )}
                   >
                     <div className="flex items-center justify-between gap-3">
                       <h4 className="text-lg sm:text-xl font-black text-on-surface truncate">{product.name}</h4>
-                      {isWinner && <span className="px-3 py-1 bg-primary text-white text-xs font-black uppercase tracking-wider rounded-full flex-shrink-0">{t('compare.winner')}</span>}
+                      {isWinner && (
+                        <span className="px-3 py-1 bg-yellow-400 text-yellow-900 text-xs font-black uppercase tracking-wider rounded-full flex items-center gap-1 flex-shrink-0">
+                          <Trophy className="w-3 h-3" />
+                          {t('compare.winner')}
+                        </span>
+                      )}
                     </div>
 
-                    <div className="flex items-center gap-3">
-                      <div className="text-4xl sm:text-5xl font-black text-primary">{product.healthScore}</div>
-                      <div className="text-sm font-bold text-on-surface-variant uppercase tracking-wider">/ 10<br />{t('compare.healthScore')}</div>
+                    <div className="flex items-center gap-3 sm:gap-4">
+                      <div className={cn('text-4xl sm:text-5xl font-black flex-shrink-0', scoreTextColor(product.healthScore))}>
+                        {product.healthScore}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="h-3 rounded-full bg-surface-container-low overflow-hidden">
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${Math.min(100, Math.max(0, product.healthScore * 10))}%` }}
+                            transition={{ duration: 0.8, delay: 0.2 + 0.05 * idx }}
+                            className={cn('h-full rounded-full', scoreBarColor(product.healthScore))}
+                          />
+                        </div>
+                        <div className="text-[10px] sm:text-xs font-bold text-on-surface-variant uppercase tracking-wider mt-1">
+                          / 10 · {t('compare.healthScore')}
+                        </div>
+                      </div>
                     </div>
 
                     <div className="space-y-3">
-                      <div>
-                        <p className="text-xs font-black uppercase tracking-wider text-green-700 mb-1">{t('compare.pros')}</p>
-                        <ul className="list-disc list-inside text-sm text-on-surface font-medium space-y-1">
-                          {product.pros.map((pro, i) => <li key={i}>{pro}</li>)}
+                      <div className="bg-green-50 rounded-2xl p-3 sm:p-4">
+                        <p className="text-xs font-black uppercase tracking-wider text-green-700 mb-1.5 flex items-center gap-1">
+                          <Check className="w-3.5 h-3.5" />
+                          {t('compare.pros')}
+                        </p>
+                        <ul className="text-sm text-on-surface font-medium space-y-1">
+                          {product.pros.map((pro, i) => (
+                            <li key={i} className="flex items-start gap-1.5">
+                              <Check className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+                              <span>{pro}</span>
+                            </li>
+                          ))}
                         </ul>
                       </div>
-                      <div>
-                        <p className="text-xs font-black uppercase tracking-wider text-red-700 mb-1">{t('compare.cons')}</p>
-                        <ul className="list-disc list-inside text-sm text-on-surface font-medium space-y-1">
-                          {product.cons.map((con, i) => <li key={i}>{con}</li>)}
+                      <div className="bg-red-50 rounded-2xl p-3 sm:p-4">
+                        <p className="text-xs font-black uppercase tracking-wider text-red-700 mb-1.5 flex items-center gap-1">
+                          <X className="w-3.5 h-3.5" />
+                          {t('compare.cons')}
+                        </p>
+                        <ul className="text-sm text-on-surface font-medium space-y-1">
+                          {product.cons.map((con, i) => (
+                            <li key={i} className="flex items-start gap-1.5">
+                              <X className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+                              <span>{con}</span>
+                            </li>
+                          ))}
                         </ul>
                       </div>
                     </div>
