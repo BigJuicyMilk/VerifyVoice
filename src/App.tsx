@@ -224,6 +224,12 @@ const ScannerView = ({ onScan }: { onScan: (imagePath: string, localPreview?: st
   const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
   const [cameraActive, setCameraActive] = useState(true);
 
+  const whyPoints = [
+    { icon: Search, title: t('compare.why1Title'), desc: t('compare.why1Desc') },
+    { icon: ShieldCheck, title: t('compare.why2Title'), desc: t('compare.why2Desc') },
+    { icon: Heart, title: t('compare.why3Title'), desc: t('compare.why3Desc') },
+  ];
+
   const startCamera = useCallback(async () => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
@@ -566,6 +572,29 @@ const ScannerView = ({ onScan }: { onScan: (imagePath: string, localPreview?: st
             <button className="h-12 sm:h-16 w-full rounded-xl sm:rounded-2xl font-bold text-base sm:text-xl bg-white border-2 border-primary/10 text-primary hover:bg-primary/5 transition-colors">
               {t('scanner.searchManually')}
             </button>
+          </div>
+        </div>
+
+        {/* Why choose us */}
+        <div className="bg-gradient-to-br from-yellow-50 to-primary/5 rounded-3xl border border-primary/10 p-5 sm:p-8 space-y-4 sm:space-y-6 w-full">
+          <div className="text-center space-y-2">
+            <h3 className="text-xl sm:text-3xl font-black text-on-surface">{t('compare.whyTitle')}</h3>
+            <p className="text-sm sm:text-lg text-on-surface-variant font-medium max-w-2xl mx-auto leading-relaxed">
+              {t('compare.whySubtitle')}
+            </p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-5">
+            {whyPoints.map((point, i) => (
+              <div key={i} className="bg-white/80 rounded-2xl p-4 sm:p-5 flex sm:flex-col items-start sm:items-center gap-3 sm:text-center shadow-sm">
+                <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-yellow-100 flex items-center justify-center flex-shrink-0">
+                  <point.icon className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-700" />
+                </div>
+                <div>
+                  <p className="font-black text-on-surface text-base sm:text-lg">{point.title}</p>
+                  <p className="text-sm text-on-surface-variant font-medium leading-snug">{point.desc}</p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
