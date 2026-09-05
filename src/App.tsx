@@ -39,7 +39,8 @@ import {
   Trophy,
   Camera,
   Check,
-  Heart
+  Heart,
+  ScanSearch
 } from 'lucide-react';
 import { cn, uuid, imageSrc } from './lib/utils';
 import { useAuth } from './context/AuthContext';
@@ -50,6 +51,7 @@ import LanguageSwitcher from './components/LanguageSwitcher';
 
 // --- Types ---
 type Screen = 'check' | 'question' | 'results' | 'history' | 'learn' | 'profile' | 'compare';
+type ScanVariant = 'food' | 'any';
 
 interface AnalysisResult {
   extractedText: string;
@@ -68,6 +70,7 @@ interface HistoryRecord {
   savedPath: string;
   healthScore?: number | null;
   healthReason?: string;
+  subject?: 'food' | 'general';
 }
 
 interface NavItemProps {
@@ -209,8 +212,9 @@ const Header = ({
 
 // --- Screen Views ---
 
-const ScannerView = ({ onScan }: { onScan: (imagePath: string, localPreview?: string) => void }) => {
+const ScannerView = ({ onScan, variant = 'food' }: { onScan: (imagePath: string, localPreview?: string) => void; variant?: ScanVariant }) => {
   const { t } = useLanguage();
+  const isAny = variant === 'any';
   const { user } = useAuth();
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -398,9 +402,9 @@ const ScannerView = ({ onScan }: { onScan: (imagePath: string, localPreview?: st
   return (
     <div className="flex flex-col items-center pt-4 sm:pt-8 pb-24 sm:pb-32 px-4 sm:px-6 max-w-4xl mx-auto w-full">
       <div className="text-center mb-4 sm:mb-10">
-        <h2 className="text-3xl sm:text-5xl font-black leading-tight text-on-surface mb-2 sm:mb-4">{t('scanner.title')}</h2>
+        <h2 className="text-3xl sm:text-5xl font-black leading-tight text-on-surface mb-2 sm:mb-4">{isAny ? t('anyscan.title') : t('scanner.title')}</h2>
         <p className="text-base sm:text-xl font-medium text-on-surface-variant max-w-2xl mx-auto px-2 sm:px-0">
-          {t('scanner.description')}
+          {isAny ? t('anyscan.description') : t('scanner.description')}
         </p>
       </div>
 
@@ -477,7 +481,7 @@ const ScannerView = ({ onScan }: { onScan: (imagePath: string, localPreview?: st
               </div>
 
               <div className="mt-6 sm:mt-12 bg-black/60 backdrop-blur-md px-4 sm:px-8 py-2 sm:py-3 rounded-full border border-white/20">
-                <p className="text-white font-bold text-sm sm:text-lg">{t('scanner.alignLabel')}</p>
+                <p className="text-white font-bold text-sm sm:text-lg">{isAny ? t('anyscan.alignLabel') : t('scanner.alignLabel')}</p>
               </div>
             </div>
 
@@ -606,13 +610,16 @@ const QuestionView = ({
   imagePath,
   onAnalyze,
   isAnalyzing,
+  variant = 'food',
 }: {
   imagePath: string;
   onAnalyze: (question: string, mode: 'short' | 'detailed') => void;
   isAnalyzing: boolean;
+  variant?: ScanVariant;
 }) => {
   const { t } = useLanguage();
   const [question, setQuestion] = useState('');
+  const isAny = variant === 'any';
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -625,14 +632,23 @@ const QuestionView = ({
     onAnalyze(question.trim(), 'short');
   };
 
-  const suggestions = [
-    t('question.healthy'),
-    t('question.highSugar'),
-    t('question.palmOil'),
-    t('question.glutenFree'),
-    t('question.allergens'),
-    t('question.vegan'),
-  ];
+  const suggestions = isAny
+    ? [
+        t('anyscan.whatIsThis'),
+        t('anyscan.howToUse'),
+        t('anyscan.isItSafe'),
+        t('anyscan.whatIsItMadeOf'),
+        t('anyscan.brandInfo'),
+        t('anyscan.howToCare'),
+      ]
+    : [
+        t('question.healthy'),
+        t('question.highSugar'),
+        t('question.palmOil'),
+        t('question.glutenFree'),
+        t('question.allergens'),
+        t('question.vegan'),
+      ];
 
   return (
     <div className="flex flex-col items-center pt-4 sm:pt-8 pb-24 sm:pb-32 px-4 sm:px-6 max-w-4xl mx-auto w-full">
@@ -643,9 +659,9 @@ const QuestionView = ({
         className="w-full space-y-4 sm:space-y-6"
       >
         <div className="text-center">
-          <h2 className="text-3xl sm:text-5xl font-black leading-tight text-on-surface mb-2 sm:mb-4">{t('question.title')}</h2>
+          <h2 className="text-3xl sm:text-5xl font-black leading-tight text-on-surface mb-2 sm:mb-4">{isAny ? t('anyscan.questionTitle') : t('question.title')}</h2>
           <p className="text-base sm:text-xl font-medium text-on-surface-variant max-w-2xl mx-auto px-2 sm:px-0">
-            {t('question.description')}
+            {isAny ? t('anyscan.questionDescription') : t('question.description')}
           </p>
         </div>
 
@@ -653,7 +669,7 @@ const QuestionView = ({
         <div className="relative w-full aspect-[4/3] rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl bg-surface-container-highest">
           <img src={imageSrc(imagePath)} alt={t('common.scannedProductAlt')} className="w-full h-full object-cover" />
           <div className="absolute top-3 left-3 sm:top-4 sm:left-4 bg-primary text-white px-3 sm:px-4 py-1 sm:py-1.5 rounded-full text-xs sm:text-sm font-black uppercase tracking-wider">
-            {t('question.ingredientList')}
+            {isAny ? t('anyscan.imageBadge') : t('question.ingredientList')}
           </div>
         </div>
 
@@ -663,7 +679,7 @@ const QuestionView = ({
             type="text"
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
-            placeholder={t('question.placeholder')}
+            placeholder={isAny ? t('anyscan.placeholder') : t('question.placeholder')}
             className="w-full h-12 sm:h-16 bg-white rounded-xl sm:rounded-2xl px-4 sm:px-6 text-base sm:text-xl font-bold text-on-surface placeholder:text-on-surface-variant/40 border-none focus:ring-4 focus:ring-primary/20 transition-all shadow-sm"
             disabled={isAnalyzing}
           />
@@ -739,14 +755,17 @@ const ResultsView = ({
   result,
   onScanAnother,
   onAskAnother,
+  variant = 'food',
 }: {
   imagePath: string;
   question: string;
   result: AnalysisResult;
   onScanAnother: () => void;
   onAskAnother: () => void;
+  variant?: ScanVariant;
 }) => {
   const { t, speechLang } = useLanguage();
+  const isAny = variant === 'any';
   return (
     <div className="pt-4 sm:pt-8 pb-24 sm:pb-32 px-4 sm:px-6 max-w-4xl mx-auto w-full space-y-4 sm:space-y-8">
       {/* Header */}
@@ -820,9 +839,11 @@ const ResultsView = ({
                 <span className="text-3xl sm:text-4xl font-black text-primary">{result.healthScore}</span>
               </div>
               <div>
-                <p className="text-xs sm:text-sm font-black text-primary uppercase tracking-wider">{t('results.healthRating')}</p>
+                <p className="text-xs sm:text-sm font-black text-primary uppercase tracking-wider">{isAny ? t('anyscan.scoreTitle') : t('results.healthRating')}</p>
                 <h3 className="text-xl sm:text-2xl font-black text-on-surface">
-                  {result.healthScore >= 7 ? t('results.healthyChoice') : result.healthScore >= 4 ? t('results.okayModeration') : t('results.limitProduct')}
+                  {isAny
+                    ? result.healthScore >= 7 ? t('anyscan.scoreGood') : result.healthScore >= 4 ? t('anyscan.scoreOk') : t('anyscan.scoreBad')
+                    : result.healthScore >= 7 ? t('results.healthyChoice') : result.healthScore >= 4 ? t('results.okayModeration') : t('results.limitProduct')}
                 </h3>
               </div>
             </div>
@@ -849,7 +870,7 @@ const ResultsView = ({
           <div className="flex justify-between items-start mb-4 sm:mb-8 gap-3">
             <div className="flex items-center gap-3 sm:gap-4">
               <Zap className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
-              <h4 className="text-2xl sm:text-3xl font-black">{t('results.extractedIngredients')}</h4>
+              <h4 className="text-2xl sm:text-3xl font-black">{isAny ? t('anyscan.extractedTitle') : t('results.extractedIngredients')}</h4>
             </div>
             <SpeechButton text={result.extractedText} speechLang={speechLang} ariaLabel={t('common.readAloud')} className="w-9 h-9 sm:w-10 sm:h-10 flex-shrink-0" />
           </div>
@@ -867,7 +888,7 @@ const ResultsView = ({
         >
           <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-8">
             <ShieldCheck className="w-6 h-6 sm:w-8 sm:h-8 text-tertiary" />
-            <h4 className="text-2xl sm:text-3xl font-black">{t('results.productImage')}</h4>
+            <h4 className="text-2xl sm:text-3xl font-black">{isAny ? t('anyscan.imageBadge') : t('results.productImage')}</h4>
           </div>
           <div className="mt-auto">
             <img
@@ -898,7 +919,7 @@ const ResultsView = ({
           className="bg-primary text-white px-6 sm:px-10 py-3 sm:py-5 rounded-full text-base sm:text-xl font-bold hover:bg-primary-container transition-all active:scale-95 shadow-lg inline-flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-center"
         >
           <QrCode className="w-5 h-5 sm:w-6 sm:h-6" />
-          {t('results.scanAnother')}
+          {isAny ? t('anyscan.scanAnother') : t('results.scanAnother')}
         </button>
       </motion.div>
     </div>
@@ -1822,6 +1843,7 @@ const LearnView = ({ onFinish }: { onFinish: () => void }) => {
 export default function App() {
   const { t, lang } = useLanguage();
   const [currentScreen, setCurrentScreen] = useState<Screen>('check');
+  const [scanMode, setScanMode] = useState<ScanVariant>('food');
   const [audioOn, setAudioOn] = useState(true);
   const [scanImagePath, setScanImagePath] = useState<string | null>(null);
   const [scanImagePreview, setScanImagePreview] = useState<string | null>(null);
@@ -1853,6 +1875,7 @@ export default function App() {
           question,
           language: lang,
           mode,
+          subject: scanMode === 'any' ? 'general' : 'food',
         }),
       });
 
@@ -1891,6 +1914,7 @@ export default function App() {
   };
 
   const handleHistorySelect = (record: HistoryRecord) => {
+    setScanMode(record.subject === 'general' ? 'any' : 'food');
     setScanImagePath(record.imagePath);
     setScanImagePreview(null);
     setUserQuestion(record.question);
@@ -1906,16 +1930,17 @@ export default function App() {
 
   const renderScreen = () => {
     switch (currentScreen) {
-      case 'check': return <ScannerView onScan={handleScan} />;
+      case 'check': return <ScannerView onScan={handleScan} variant={scanMode} />;
       case 'question':
         return scanImagePath ? (
           <QuestionView
             imagePath={scanImagePreview || scanImagePath}
             onAnalyze={handleAnalyze}
             isAnalyzing={isAnalyzing}
+            variant={scanMode}
           />
         ) : (
-          <ScannerView onScan={handleScan} />
+          <ScannerView onScan={handleScan} variant={scanMode} />
         );
       case 'results':
         return scanImagePath && analysisResult ? (
@@ -1925,9 +1950,10 @@ export default function App() {
             result={analysisResult}
             onScanAnother={handleScanAnother}
             onAskAnother={handleAskAnotherQuestion}
+            variant={scanMode}
           />
         ) : (
-          <ScannerView onScan={handleScan} />
+          <ScannerView onScan={handleScan} variant={scanMode} />
         );
       case 'learn': return <LearnView onFinish={() => setCurrentScreen('check')} />;
       case 'compare': return <CompareView onBack={() => setCurrentScreen('check')} />;
@@ -1968,8 +1994,19 @@ export default function App() {
         <NavItem 
           icon={CheckCircle} 
           label={t('nav.check')} 
-          active={currentScreen === 'check' || currentScreen === 'question' || currentScreen === 'results'} 
+          active={(currentScreen === 'check' || currentScreen === 'question' || currentScreen === 'results') && scanMode === 'food'} 
           onClick={() => {
+            setScanMode('food');
+            handleScanAnother();
+            setCurrentScreen('check');
+          }} 
+        />
+        <NavItem 
+          icon={ScanSearch} 
+          label={t('nav.scanAny')} 
+          active={(currentScreen === 'check' || currentScreen === 'question' || currentScreen === 'results') && scanMode === 'any'} 
+          onClick={() => {
+            setScanMode('any');
             handleScanAnother();
             setCurrentScreen('check');
           }} 

@@ -359,12 +359,14 @@ export function registerApiMiddlewares(use: UseFn, env: EnvVars, rootDir: string
       req.on('end', () => {
         (async () => {
           try {
-            const { userId, imagePath, question, language, mode } = JSON.parse(body);
+            const { userId, imagePath, question, language, mode, subject } = JSON.parse(body);
             if (!userId || !imagePath || !question) {
               res.statusCode = 400;
               res.end(JSON.stringify({ error: 'Missing userId, imagePath, or question' }));
               return;
             }
+
+            const isGeneral = subject === 'general';
 
             let imageBuffer: Buffer;
             let mimeType: string;
@@ -438,21 +440,24 @@ export function registerApiMiddlewares(use: UseFn, env: EnvVars, rootDir: string
                 defaultHeaders: llmAppId ? { appid: llmAppId } : undefined,
               });
 
-              // Step 1: Extract ingredients from the image using the configured LLM.
+              // Step 1: Extract content from the image using the configured LLM.
               const extractCompletion = await client.chat.completions.create({
                 model: llmModel,
                 messages: [
                   {
                     role: 'system',
-                    content:
-                      'You extract ingredient lists from product label images. List every ingredient clearly, one per line, preserving the original language of the label. If you cannot read something, mark it as [unreadable].',
+                    content: isGeneral
+                      ? 'You describe images accurately. Identify the main object, product, or text in the image: what it is, any visible brand, model, labels, or text, and notable features or condition. Be clear and factual. If you cannot tell what something is, say so.'
+                      : 'You extract ingredient lists from product label images. List every ingredient clearly, one per line, preserving the original language of the label. If you cannot read something, mark it as [unreadable].',
                   },
                   {
                     role: 'user',
                     content: [
                       {
                         type: 'text',
-                        text: 'Extract all ingredients from this product ingredient-list image.',
+                        text: isGeneral
+                          ? 'Describe this image: identify the item and transcribe any visible text or labels.'
+                          : 'Extract all ingredients from this product ingredient-list image.',
                       },
                       {
                         type: 'image_url',
@@ -468,7 +473,7 @@ export function registerApiMiddlewares(use: UseFn, env: EnvVars, rootDir: string
                 extractCompletion.choices?.[0]?.message?.content ||
                 serverT(language, 'noTextExtracted');
 
-              // Step 2: Answer the user's question based on the extracted ingredients.
+              // Step 2: Answer the user's question based on the extracted content.
               const answerInstruction =
                 mode === 'short'
                   ? 'Answer in 1-2 short sentences only. Give the direct answer first (yes/no/it depends), then the key reason. No extra detail, no lists.'
@@ -478,12 +483,15 @@ export function registerApiMiddlewares(use: UseFn, env: EnvVars, rootDir: string
                 messages: [
                   {
                     role: 'system',
-                    content:
-                      'You are a helpful ingredient-list analysis expert. You read product ingredient lists and answer questions about them accurately, concisely, and in plain language. Be honest when you are unsure.',
+                    content: isGeneral
+                      ? 'You are a helpful visual analysis assistant. Based on the description of a scanned image, you answer questions about the item accurately, concisely, and in plain language. Be honest when you are unsure.'
+                      : 'You are a helpful ingredient-list analysis expert. You read product ingredient lists and answer questions about them accurately, concisely, and in plain language. Be honest when you are unsure.',
                   },
                   {
                     role: 'user',
-                    content: `Ingredients extracted from the product label:\n${extractedText}\n\nUser question: ${question}\n\nPlease answer the question based only on the ingredient list above. If the list clearly supports the answer, say so confidently. If it does not, explain why. If you are unsure, say so. ${answerInstruction} Respond in ${language || 'English'}.`,
+                    content: isGeneral
+                      ? `Description of the scanned image:\n${extractedText}\n\nUser question: ${question}\n\nPlease answer the question based on the description above and your general knowledge about this kind of item. If the description clearly supports the answer, say so confidently. If it does not, explain why. If you are unsure, say so. ${answerInstruction} Respond in ${language || 'English'}.`
+                      : `Ingredients extracted from the product label:\n${extractedText}\n\nUser question: ${question}\n\nPlease answer the question based only on the ingredient list above. If the list clearly supports the answer, say so confidently. If it does not, explain why. If you are unsure, say so. ${answerInstruction} Respond in ${language || 'English'}.`,
                   },
                 ],
                 stream: false,
@@ -494,19 +502,22 @@ export function registerApiMiddlewares(use: UseFn, env: EnvVars, rootDir: string
                 completion.choices?.[0]?.message?.content ||
                 serverT(language, 'noAnalysis');
 
-              // Step 3: Rate overall health based on the extracted ingredients.
+              // Step 3: Rate the scanned subject (health for food, safety/quality otherwise).
               try {
                 const healthCompletion = await client.chat.completions.create({
                   model: llmModel,
                   messages: [
                     {
                       role: 'system',
-                      content:
-                        'You are a nutrition expert. Based on a product\'s ingredient list, return valid JSON only with healthScore (integer 1-10) and healthReason (one sentence explaining the score in the user\'s language). Base the score on whole/minimally processed ingredients, added sugars, sodium, fiber, protein, and healthy fats.',
+                      content: isGeneral
+                        ? 'You are a product safety expert. Based on the description of a scanned item, return valid JSON only with healthScore (integer 1-10) and healthReason (one sentence explaining the score in the user\'s language). Rate the item\'s overall safety and quality for typical use, considering visible condition, materials, and any warnings.'
+                        : 'You are a nutrition expert. Based on a product\'s ingredient list, return valid JSON only with healthScore (integer 1-10) and healthReason (one sentence explaining the score in the user\'s language). Base the score on whole/minimally processed ingredients, added sugars, sodium, fiber, protein, and healthy fats.',
                     },
                     {
                       role: 'user',
-                      content: `Ingredients extracted from the product label:\n${extractedText}\n\nReturn JSON: {"healthScore": number, "healthReason": "..."}\n\nRespond in ${language || 'English'}.`,
+                      content: isGeneral
+                        ? `Description of the scanned item:\n${extractedText}\n\nReturn JSON: {"healthScore": number, "healthReason": "..."}\n\nRespond in ${language || 'English'}.`
+                        : `Ingredients extracted from the product label:\n${extractedText}\n\nReturn JSON: {"healthScore": number, "healthReason": "..."}\n\nRespond in ${language || 'English'}.`,
                     },
                   ],
                   stream: false,
@@ -544,6 +555,7 @@ export function registerApiMiddlewares(use: UseFn, env: EnvVars, rootDir: string
               analysisResult,
               healthScore,
               healthReason,
+              subject: isGeneral ? 'general' : 'food',
               analysisRaw,
             };
             fs.writeFileSync(analysisFilePath, JSON.stringify(analysisRecord, null, 2), 'utf-8');
