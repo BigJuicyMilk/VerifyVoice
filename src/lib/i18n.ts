@@ -239,7 +239,7 @@ const translations = {
       readAloud: 'Read aloud',
     },
     nav: {
-      check: 'Check',
+      check: 'Scan Food',
       history: 'History',
       learn: 'Learn',
       compare: 'Compare',
@@ -466,7 +466,7 @@ const translations = {
       readAloud: 'ज़ोर से पढ़ें',
     },
     nav: {
-      check: 'जाँच',
+      check: 'भोजन स्कैन',
       history: 'इतिहास',
       learn: 'सीखें',
       compare: 'तुलना',
@@ -693,7 +693,7 @@ const translations = {
       readAloud: 'قراءة بصوت عالٍ',
     },
     nav: {
-      check: 'فحص',
+      check: 'مسح الطعام',
       history: 'السجل',
       learn: 'تعلم',
       compare: 'مقارنة',
@@ -920,7 +920,7 @@ const translations = {
       readAloud: '朗读',
     },
     nav: {
-      check: '检查',
+      check: '扫描食物',
       history: '历史',
       learn: '学习',
       compare: '对比',
@@ -1147,7 +1147,7 @@ const translations = {
       readAloud: 'Leer en voz alta',
     },
     nav: {
-      check: 'Verificar',
+      check: 'Escanear comida',
       history: 'Historial',
       learn: 'Aprender',
       compare: 'Comparar',

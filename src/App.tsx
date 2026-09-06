@@ -9,7 +9,6 @@ import {
   AudioLines, 
   Volume2, 
   VolumeX, 
-  CheckCircle, 
   Mic, 
   History as HistoryIcon, 
   GraduationCap, 
@@ -40,7 +39,8 @@ import {
   Camera,
   Check,
   Heart,
-  ScanSearch
+  ScanSearch,
+  UtensilsCrossed
 } from 'lucide-react';
 import { cn, uuid, imageSrc } from './lib/utils';
 import { useAuth } from './context/AuthContext';
@@ -212,9 +212,32 @@ const Header = ({
 
 // --- Screen Views ---
 
-const ScannerView = ({ onScan, variant = 'food' }: { onScan: (imagePath: string, localPreview?: string) => void; variant?: ScanVariant }) => {
+const ScannerView = ({ onScan, variant = 'food', onVariantChange }: { onScan: (imagePath: string, localPreview?: string) => void; variant?: ScanVariant; onVariantChange?: (v: ScanVariant) => void }) => {
   const { t } = useLanguage();
   const isAny = variant === 'any';
+  const accent = isAny
+    ? {
+        corner: 'border-violet-400',
+        scanLine: 'bg-violet-400 shadow-[0_0_15px_#a78bfa]',
+        scanButton: 'bg-gradient-to-br from-violet-500 to-violet-700',
+        troubleCard: 'bg-violet-100/50 border-violet-400',
+        troubleTitle: 'text-violet-900',
+        troubleText: 'text-violet-800',
+        whyBanner: 'from-violet-50 to-violet-100/40',
+        whyIconBg: 'bg-violet-100',
+        whyIconText: 'text-violet-700',
+      }
+    : {
+        corner: 'border-yellow-400',
+        scanLine: 'bg-yellow-400 shadow-[0_0_15px_#facc15]',
+        scanButton: 'bg-gradient-to-br from-primary to-primary-container',
+        troubleCard: 'bg-yellow-100/50 border-yellow-400',
+        troubleTitle: 'text-yellow-900',
+        troubleText: 'text-yellow-800',
+        whyBanner: 'from-yellow-50 to-primary/5',
+        whyIconBg: 'bg-yellow-100',
+        whyIconText: 'text-yellow-700',
+      };
   const { user } = useAuth();
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -412,6 +435,32 @@ const ScannerView = ({ onScan, variant = 'food' }: { onScan: (imagePath: string,
         {/* Hidden canvas for capturing video frames */}
         <canvas ref={canvasRef} className="hidden" />
 
+        {/* Scan type selector — optional, scanning works with the current type by default */}
+        {!previewUrl && (
+          <div className="absolute top-3 sm:top-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1 bg-black/50 backdrop-blur-md rounded-full p-1">
+            <button
+              onClick={() => onVariantChange?.('food')}
+              className={cn(
+                "flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-bold transition-all",
+                variant === 'food' ? "bg-yellow-400 text-yellow-950 shadow" : "text-white/80 hover:bg-white/10"
+              )}
+            >
+              <UtensilsCrossed className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              {t('nav.check')}
+            </button>
+            <button
+              onClick={() => onVariantChange?.('any')}
+              className={cn(
+                "flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-bold transition-all",
+                variant === 'any' ? "bg-violet-400 text-white shadow" : "text-white/80 hover:bg-white/10"
+              )}
+            >
+              <ScanSearch className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              {t('nav.scanAny')}
+            </button>
+          </div>
+        )}
+
         {previewUrl ? (
           <>
             <img src={previewUrl} alt={t('common.previewAlt')} className="w-full h-full object-cover" />
@@ -467,17 +516,53 @@ const ScannerView = ({ onScan, variant = 'food' }: { onScan: (imagePath: string,
             {/* Viewfinder Overlay */}
             <div className="absolute inset-0 flex flex-col items-center justify-center p-4 sm:p-8 bg-black/20 pointer-events-none">
               <div className="relative w-48 h-48 sm:w-60 sm:h-60 md:w-72 md:h-72 border-4 border-white/40 rounded-2xl sm:rounded-3xl">
-                <div className="absolute -top-1 -left-1 w-7 h-7 sm:w-10 sm:h-10 border-t-4 sm:border-t-8 border-l-4 sm:border-l-8 border-yellow-400 rounded-tl-lg sm:rounded-tl-xl" />
-                <div className="absolute -top-1 -right-1 w-7 h-7 sm:w-10 sm:h-10 border-t-4 sm:border-t-8 border-r-4 sm:border-r-8 border-yellow-400 rounded-tr-lg sm:rounded-tr-xl" />
-                <div className="absolute -bottom-1 -left-1 w-7 h-7 sm:w-10 sm:h-10 border-b-4 sm:border-b-8 border-l-4 sm:border-l-8 border-yellow-400 rounded-bl-lg sm:rounded-bl-xl" />
-                <div className="absolute -bottom-1 -right-1 w-7 h-7 sm:w-10 sm:h-10 border-b-4 sm:border-b-8 border-r-4 sm:border-r-8 border-yellow-400 rounded-br-lg sm:rounded-br-xl" />
+                <div className={cn("absolute -top-1 -left-1 w-7 h-7 sm:w-10 sm:h-10 border-t-4 sm:border-t-8 border-l-4 sm:border-l-8 rounded-tl-lg sm:rounded-tl-xl", accent.corner)} />
+                <div className={cn("absolute -top-1 -right-1 w-7 h-7 sm:w-10 sm:h-10 border-t-4 sm:border-t-8 border-r-4 sm:border-r-8 rounded-tr-lg sm:rounded-tr-xl", accent.corner)} />
+                <div className={cn("absolute -bottom-1 -left-1 w-7 h-7 sm:w-10 sm:h-10 border-b-4 sm:border-b-8 border-l-4 sm:border-l-8 rounded-bl-lg sm:rounded-bl-xl", accent.corner)} />
+                <div className={cn("absolute -bottom-1 -right-1 w-7 h-7 sm:w-10 sm:h-10 border-b-4 sm:border-b-8 border-r-4 sm:border-r-8 rounded-br-lg sm:rounded-br-xl", accent.corner)} />
 
                 {/* Scan Line Animation */}
                 <motion.div
                   animate={{ top: ['0%', '100%', '0%'] }}
                   transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-                  className="absolute left-0 right-0 h-1 bg-yellow-400 shadow-[0_0_15px_#facc15] z-10"
+                  className={cn("absolute left-0 right-0 h-1 z-10", accent.scanLine)}
                 />
+
+                {isAny && (
+                  <>
+                    {/* Cute bear ears */}
+                    <div className="absolute -top-2.5 sm:-top-3 left-8 sm:left-10 w-6 h-6 sm:w-8 sm:h-8 bg-violet-400 rounded-full flex items-center justify-center">
+                      <div className="w-3 h-3 sm:w-4 sm:h-4 bg-white/50 rounded-full" />
+                    </div>
+                    <div className="absolute -top-2.5 sm:-top-3 right-8 sm:right-10 w-6 h-6 sm:w-8 sm:h-8 bg-violet-400 rounded-full flex items-center justify-center">
+                      <div className="w-3 h-3 sm:w-4 sm:h-4 bg-white/50 rounded-full" />
+                    </div>
+                    {/* Cute blinking face */}
+                    <div className="absolute top-2 sm:top-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 sm:gap-2">
+                      <motion.span
+                        animate={{ scaleY: [1, 0.15, 1] }}
+                        transition={{ duration: 0.3, repeat: Infinity, repeatDelay: 2.7 }}
+                        className="w-2 h-2 sm:w-2.5 sm:h-2.5 bg-violet-400 rounded-full"
+                      />
+                      <span className="w-2 h-1 sm:w-2.5 sm:h-1.5 bg-pink-300 rounded-full" />
+                      <span className="w-4 sm:w-5 h-2 sm:h-2.5 border-b-[3px] sm:border-b-4 border-violet-400 rounded-b-full" />
+                      <span className="w-2 h-1 sm:w-2.5 sm:h-1.5 bg-pink-300 rounded-full" />
+                      <motion.span
+                        animate={{ scaleY: [1, 0.15, 1] }}
+                        transition={{ duration: 0.3, repeat: Infinity, repeatDelay: 2.7 }}
+                        className="w-2 h-2 sm:w-2.5 sm:h-2.5 bg-violet-400 rounded-full"
+                      />
+                    </div>
+                    {/* Floating sparkle */}
+                    <motion.div
+                      animate={{ y: [0, -6, 0], rotate: [0, 15, 0] }}
+                      transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+                      className="absolute -right-7 sm:-right-9 top-2 text-violet-300"
+                    >
+                      <Sparkles className="w-5 h-5 sm:w-6 sm:h-6" />
+                    </motion.div>
+                  </>
+                )}
               </div>
 
               <div className="mt-6 sm:mt-12 bg-black/60 backdrop-blur-md px-4 sm:px-8 py-2 sm:py-3 rounded-full border border-white/20">
@@ -522,7 +607,8 @@ const ScannerView = ({ onScan, variant = 'food' }: { onScan: (imagePath: string,
             onClick={handleScan}
             disabled={isScanning}
             className={cn(
-              "bg-gradient-to-br from-primary to-primary-container text-white w-full h-14 sm:h-20 rounded-xl sm:rounded-2xl shadow-2xl flex items-center justify-center gap-2 sm:gap-4 active:scale-95 transition-transform",
+              "text-white w-full h-14 sm:h-20 rounded-xl sm:rounded-2xl shadow-2xl flex items-center justify-center gap-2 sm:gap-4 active:scale-95 transition-transform",
+              accent.scanButton,
               isScanning && "opacity-60 cursor-not-allowed"
             )}
           >
@@ -560,9 +646,9 @@ const ScannerView = ({ onScan, variant = 'food' }: { onScan: (imagePath: string,
 
       <div className="mt-8 sm:mt-12 flex flex-col items-center gap-4 sm:gap-6 w-full">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 w-full mt-4 sm:mt-6">
-          <div className="bg-yellow-100/50 p-5 sm:p-8 rounded-2xl sm:rounded-3xl border-l-[8px] sm:border-l-[12px] border-yellow-400">
-            <h3 className="text-xl sm:text-2xl font-black text-yellow-900 mb-1 sm:mb-2">{t('scanner.troubleScanning')}</h3>
-            <p className="text-base sm:text-lg text-yellow-800">{t('scanner.troubleDescription')}</p>
+          <div className={cn("p-5 sm:p-8 rounded-2xl sm:rounded-3xl border-l-[8px] sm:border-l-[12px]", accent.troubleCard)}>
+            <h3 className={cn("text-xl sm:text-2xl font-black mb-1 sm:mb-2", accent.troubleTitle)}>{t('scanner.troubleScanning')}</h3>
+            <p className={cn("text-base sm:text-lg", accent.troubleText)}>{t('scanner.troubleDescription')}</p>
           </div>
           <div className="bg-surface-container-low p-5 sm:p-8 rounded-2xl sm:rounded-3xl flex flex-col gap-3 sm:gap-4">
             <div className="relative">
@@ -580,7 +666,7 @@ const ScannerView = ({ onScan, variant = 'food' }: { onScan: (imagePath: string,
         </div>
 
         {/* Why choose us */}
-        <div className="bg-gradient-to-br from-yellow-50 to-primary/5 rounded-3xl border border-primary/10 p-5 sm:p-8 space-y-4 sm:space-y-6 w-full">
+        <div className={cn("bg-gradient-to-br rounded-3xl border border-primary/10 p-5 sm:p-8 space-y-4 sm:space-y-6 w-full", accent.whyBanner)}>
           <div className="text-center space-y-2">
             <h3 className="text-xl sm:text-3xl font-black text-on-surface">{t('compare.whyTitle')}</h3>
             <p className="text-sm sm:text-lg text-on-surface-variant font-medium max-w-2xl mx-auto leading-relaxed">
@@ -590,8 +676,8 @@ const ScannerView = ({ onScan, variant = 'food' }: { onScan: (imagePath: string,
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-5">
             {whyPoints.map((point, i) => (
               <div key={i} className="bg-white/80 rounded-2xl p-4 sm:p-5 flex sm:flex-col items-start sm:items-center gap-3 sm:text-center shadow-sm">
-                <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-yellow-100 flex items-center justify-center flex-shrink-0">
-                  <point.icon className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-700" />
+                <div className={cn("w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center flex-shrink-0", accent.whyIconBg)}>
+                  <point.icon className={cn("w-5 h-5 sm:w-6 sm:h-6", accent.whyIconText)} />
                 </div>
                 <div>
                   <p className="font-black text-on-surface text-base sm:text-lg">{point.title}</p>
@@ -1930,7 +2016,7 @@ export default function App() {
 
   const renderScreen = () => {
     switch (currentScreen) {
-      case 'check': return <ScannerView onScan={handleScan} variant={scanMode} />;
+      case 'check': return <ScannerView onScan={handleScan} variant={scanMode} onVariantChange={setScanMode} />;
       case 'question':
         return scanImagePath ? (
           <QuestionView
@@ -1940,7 +2026,7 @@ export default function App() {
             variant={scanMode}
           />
         ) : (
-          <ScannerView onScan={handleScan} variant={scanMode} />
+          <ScannerView onScan={handleScan} variant={scanMode} onVariantChange={setScanMode} />
         );
       case 'results':
         return scanImagePath && analysisResult ? (
@@ -1953,13 +2039,13 @@ export default function App() {
             variant={scanMode}
           />
         ) : (
-          <ScannerView onScan={handleScan} variant={scanMode} />
+          <ScannerView onScan={handleScan} variant={scanMode} onVariantChange={setScanMode} />
         );
       case 'learn': return <LearnView onFinish={() => setCurrentScreen('check')} />;
       case 'compare': return <CompareView onBack={() => setCurrentScreen('check')} />;
       case 'history': return <HistoryView onSelect={handleHistorySelect} />;
       case 'profile': return <ProfileScreen onBack={() => setCurrentScreen('check')} />;
-      default: return <ScannerView onScan={handleScan} />;
+      default: return <ScannerView onScan={handleScan} onVariantChange={setScanMode} />;
     }
   };
 
@@ -1992,7 +2078,7 @@ export default function App() {
 
       <nav className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-end px-2 sm:px-4 pb-4 sm:pb-8 pt-2 sm:pt-4 bg-white/90 backdrop-blur-xl border-t border-primary/10 rounded-t-3xl sm:rounded-t-[48px] shadow-[0_-10px_20px_rgba(0,0,0,0.05)] sm:shadow-[0_-20px_40px_rgba(0,0,0,0.05)]">
         <NavItem 
-          icon={CheckCircle} 
+          icon={UtensilsCrossed} 
           label={t('nav.check')} 
           active={(currentScreen === 'check' || currentScreen === 'question' || currentScreen === 'results') && scanMode === 'food'} 
           onClick={() => {
