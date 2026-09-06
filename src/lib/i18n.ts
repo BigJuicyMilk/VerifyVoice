@@ -247,7 +247,8 @@ const translations = {
     },
     anyscan: {
       title: 'Scan Anything',
-      description: 'Point your camera at any object, product, or text to identify it and ask questions about it.',
+      description: 'Point your camera at anything around you — not just food. Identify objects instantly, then ask what they are, how they work, or how to use them.',
+      examples: 'Toys • Gadgets • Clothes • Plants • Furniture • Books • Text',
       alignLabel: 'Align the item within the frame',
       questionTitle: 'Ask About This Item',
       questionDescription: 'We have captured your item. Ask anything about what it is or how to use it.',
@@ -474,7 +475,8 @@ const translations = {
     },
     anyscan: {
       title: 'कुछ भी स्कैन करें',
-      description: 'किसी भी वस्तु, उत्पाद या टेक्स्ट पर कैमरा point करें — उसे पहचानें और उसके बारे में सवाल पूछें।',
+      description: 'अपने आस-पास की किसी भी चीज़ पर कैमरा point करें — सिर्फ खाना ही नहीं। वस्तुओं को तुरंत पहचानें, फिर पूछें कि वे क्या हैं, कैसे काम करती हैं या कैसे उपयोग करें।',
+      examples: 'खिलौने • गैजेट • कपड़े • पौधे • फ़र्नीचर • किताबें • टेक्स्ट',
       alignLabel: 'वस्तु को फ्रेम के अंदर रखें',
       questionTitle: 'इस वस्तु के बारे में पूछें',
       questionDescription: 'हमने आपकी वस्तु कैप्चर कर ली है। यह क्या है या इसे कैसे उपयोग करें — कुछ भी पूछें।',
@@ -701,7 +703,8 @@ const translations = {
     },
     anyscan: {
       title: 'امسح أي شيء',
-      description: 'وجّه الكاميرا إلى أي غرض أو منتج أو نص للتعرف عليه وطرح أسئلة عنه.',
+      description: 'وجّه الكاميرا إلى أي شيء من حولك — وليس الطعام فقط. تعرّف على الأغراض فوراً، ثم اسأل عن ماهيتها أو كيفية عملها أو كيفية استخدامها.',
+      examples: 'ألعاب • أجهزة • ملابس • نباتات • أثاث • كتب • نصوص',
       alignLabel: 'ضع الغرض داخل الإطار',
       questionTitle: 'اسأل عن هذا الغرض',
       questionDescription: 'لقد التقطنا صورة الغرض. اسأل أي شيء عن ماهيته أو كيفية استخدامه.',
@@ -928,7 +931,8 @@ const translations = {
     },
     anyscan: {
       title: '扫描万物',
-      description: '将摄像头对准任何物品、产品或文字，即可识别并提问。',
+      description: '将摄像头对准身边的任何物品——不仅仅是食物。即刻识别，然后询问它是什么、如何工作或如何使用。',
+      examples: '玩具 • 电子产品 • 衣物 • 植物 • 家具 • 书籍 • 文字',
       alignLabel: '将物品对准框内',
       questionTitle: '询问这个物品',
       questionDescription: '我们已拍下该物品。您可以询问它是什么或如何使用。',
@@ -1155,7 +1159,8 @@ const translations = {
     },
     anyscan: {
       title: 'Escanea cualquier cosa',
-      description: 'Apunta la cámara a cualquier objeto, producto o texto para identificarlo y hacer preguntas sobre él.',
+      description: 'Apunta la cámara a cualquier cosa a tu alrededor, no solo comida. Identifica objetos al instante y pregunta qué son, cómo funcionan o cómo usarlos.',
+      examples: 'Juguetes • Gadgets • Ropa • Plantas • Muebles • Libros • Texto',
       alignLabel: 'Alinea el objeto dentro del marco',
       questionTitle: 'Pregunta sobre este objeto',
       questionDescription: 'Hemos capturado tu objeto. Pregunta lo que quieras sobre qué es o cómo usarlo.',

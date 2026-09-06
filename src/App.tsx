@@ -429,6 +429,15 @@ const ScannerView = ({ onScan, variant = 'food', onVariantChange }: { onScan: (i
         <p className="text-base sm:text-xl font-medium text-on-surface-variant max-w-2xl mx-auto px-2 sm:px-0">
           {isAny ? t('anyscan.description') : t('scanner.description')}
         </p>
+        {isAny && (
+          <div className="flex flex-wrap justify-center gap-1.5 sm:gap-2 mt-3 sm:mt-5 px-2">
+            {t('anyscan.examples').split('•').map((e) => e.trim()).filter(Boolean).map((example) => (
+              <span key={example} className="px-3 sm:px-4 py-1 sm:py-1.5 rounded-full bg-violet-100 text-violet-700 text-xs sm:text-sm font-bold border border-violet-200">
+                {example}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="relative w-full aspect-[3/4] sm:aspect-[4/5] rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl bg-surface-container-highest group">
